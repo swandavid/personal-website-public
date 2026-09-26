@@ -1,0 +1,23 @@
+---
+import { getCollection } from "astro:content";
+import SectionHeading from "./SectionHeading.astro";
+
+const educations = await getCollection("education");
+---
+
+<section id="education" class="mb-16 md:mb-24">
+  <SectionHeading title="Education" />
+  {educations.map(({ data: edu }) => (
+    <div class="card mb-6 md:mb-8">
+      <div class="flex flex-col sm:flex-row sm:items-baseline sm:justify-between sm:gap-x-4">
+        <span class="font-semibold text-ink">{edu.degree}</span>
+        <span class="label">{edu.period}</span>
+      </div>
+      {edu.minor && <p class="text-ink-muted">{edu.minor}</p>}
+      <p class="text-ink-muted">{edu.institution}</p>
+      {edu.description && (
+        <p class="mt-2 text-sm text-ink-faint">{edu.description}</p>
+      )}
+    </div>
+  ))}
+</section>

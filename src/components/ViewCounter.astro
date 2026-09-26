@@ -1,0 +1,37 @@
+---
+/**
+ * Records a page view. Nothing is shown on the page; the totals are at
+ * /api/views for the site owner.
+ */
+---
+
+<script>
+  async function recordView() {
+    // Skip the write when this tab already reported this page. The server
+    // deduplicates too; this just saves a request.
+    const path = location.pathname;
+    const key = "viewed:" + path;
+    try {
+      if (sessionStorage.getItem(key) === "1") return;
+    } catch {
+      // Storage can be unavailable in private windows; count anyway.
+    }
+    try {
+      const res = await fetch("/api/views", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ path }),
+      });
+      if (!res.ok) return;
+      try {
+        sessionStorage.setItem(key, "1");
+      } catch {
+        // Ignore; see above.
+      }
+    } catch {
+      // Counting is best effort.
+    }
+  }
+  // Fires on the first load too, under <ClientRouter />.
+  document.addEventListener("astro:page-load", recordView);
+</script>

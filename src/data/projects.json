@@ -1,0 +1,39 @@
+[
+  {
+    "id": "rover-planner",
+    "name": "Rover Path Planner",
+    "role": "Personal project",
+    "projectUrl": "/rover",
+    "sourceUrl": "https://github.com/swandavid/personal-website-public/tree/main/src/lib/rover",
+    "description": "An interactive 3D lunar rover dropped onto unmapped terrain. It maps the ground from a stereo camera point cloud, feels slopes with an IMU, plans with A* in a Web Worker, keeps its wheels out of no-go zones and backs out of trouble. Below it, an x-ray model shows the avionics and wiring inside.",
+    "technologies": [
+      "Path planning",
+      "Stereo perception",
+      "Costmaps",
+      "TypeScript",
+      "three.js",
+      "Web Workers"
+    ],
+    "image": "../assets/rover-loop-poster.jpg",
+    "video": "/media/rover-loop.mp4"
+  },
+  {
+    "id": "nexusodds",
+    "name": "Nexus Odds",
+    "role": "Co-founder",
+    "projectUrl": "https://nexusodds.com",
+    "description": "A sports betting analytics SaaS with 2,600+ registered users and 1,290+ lifetime paying customers. I designed the original Python data-collection framework and serverless AWS ingestion pipeline; the platform now processes ~32M odds records a day across 33+ sportsbooks and prediction markets.",
+    "technologies": ["Python", "AWS", "Serverless", "Data pipelines"],
+    "image": "../assets/snapshots/nexusodds.jpg",
+    "snapshotUrl": "https://nexusodds.com"
+  },
+  {
+    "id": "personal-website",
+    "name": "Personal Website",
+    "sourceUrl": "https://github.com/swandavid/personal-website-public",
+    "description": "This site: Astro, React and Tailwind CSS on Netlify. The résumé PDF is generated from HTML, project screenshots refresh themselves every week, and CI lints, tests and builds every change.",
+    "technologies": ["Astro", "React", "Tailwind CSS", "TypeScript", "Netlify"],
+    "image": "../assets/snapshots/personal-website.jpg",
+    "snapshotUrl": "https://swandavid.com"
+  }
+]

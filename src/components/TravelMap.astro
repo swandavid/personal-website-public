@@ -1,0 +1,615 @@
+---
+/**
+ * Travel map: visited countries, with a drill-down into visited US states.
+ *
+ * Geometry is projected at build time from src/data/travel.json (unknown
+ * names fail the build), so the page ships plain SVG. A small script adds
+ * the interaction: a name tooltip on hover or tap, an outline on the
+ * hovered shape, and an animated zoom between the world and the US.
+ */
+import {
+  geoAlbersUsa,
+  geoCentroid,
+  geoGraticule10,
+  geoNaturalEarth1,
+  geoPath,
+} from "d3-geo";
+import { feature } from "topojson-client";
+import { presimplify, quantile, simplify } from "topojson-simplify";
+import type { Topology, GeometryCollection } from "topojson-specification";
+import type { Feature, FeatureCollection, Geometry } from "geojson";
+import worldTopo from "world-atlas/countries-50m.json";
+import usTopo from "us-atlas/states-10m.json";
+import travel from "@/data/travel.json";
+import { rewind } from "@/lib/geo";
+import ukNations from "@/data/uk-nations.json";
+
+type Named = { name: string };
+
+/** Drop detail the map does not need at this size. `keep` is roughly the fraction of points retained. */
+function simplified(topo: Topology, keep: number): Topology {
+  // topojson-simplify types use a narrower Topology generic; the data is the same.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const pre = presimplify(topo as any);
+  return simplify(pre, quantile(pre, keep)) as unknown as Topology;
+}
+const worldSimple = simplified(worldTopo as unknown as Topology, 0.1);
+const usSimple = simplified(usTopo as unknown as Topology, 0.25);
+
+// Unsimplified copy, used only to place markers for places too small to draw.
+const worldRaw = feature(
+  worldTopo as unknown as Topology,
+  (worldTopo as unknown as Topology).objects
+    .countries as GeometryCollection<Named>,
+) as FeatureCollection<Geometry, Named>;
+const rawByName = new Map(worldRaw.features.map((f) => [f.properties.name, f]));
+
+const world = feature(
+  worldSimple,
+  worldSimple.objects.countries as GeometryCollection<Named>,
+) as FeatureCollection<Geometry, Named>;
+const us = feature(
+  usSimple,
+  usSimple.objects.states as GeometryCollection<Named>,
+) as FeatureCollection<Geometry, Named>;
+
+// The UK is drawn as its four nations so each can be visited on its own.
+const nations = (
+  ukNations as unknown as FeatureCollection<Geometry, Named>
+).features.map(rewind);
+
+const countries = [
+  ...world.features.filter(
+    (f) =>
+      f.properties.name !== "Antarctica" &&
+      f.properties.name !== "United Kingdom",
+  ),
+  ...nations,
+];
+const states = us.features;
+
+function assertKnown(
+  list: string[],
+  features: Feature<Geometry, Named>[],
+  kind: string,
+) {
+  const known = new Set(features.map((f) => f.properties.name));
+  const bad = list.filter((n) => !known.has(n));
+  if (bad.length)
+    throw new Error(`Unknown ${kind} in travel.json: ${bad.join(", ")}`);
+}
+assertKnown(travel.countries, countries, "countries");
+assertKnown(travel.states, states, "states");
+
+const visitedCountries = new Set(travel.countries);
+const countryCount = visitedCountries.size;
+const visitedStates = new Set(travel.states);
+
+const US_NAME = "United States of America";
+const DISPLAY_NAMES: Record<string, string> = {
+  [US_NAME]: "United States",
+  "Dominican Rep.": "Dominican Republic",
+};
+const displayName = (name: string) => DISPLAY_NAMES[name] ?? name;
+
+// Both views share one frame so switching never shifts the layout.
+const W = 800;
+const H = 416;
+
+const worldProjection = geoNaturalEarth1().fitExtent(
+  [
+    [2, 2],
+    [W - 2, H - 2],
+  ],
+  { type: "Sphere" },
+);
+const worldPath = geoPath(worldProjection).digits(1);
+const usPath = geoPath(
+  geoAlbersUsa().fitExtent(
+    [
+      [24, 16],
+      [W - 24, H - 16],
+    ],
+    us,
+  ),
+).digits(1);
+
+const sphere = worldPath({ type: "Sphere" }) ?? "";
+const graticule = worldPath(geoGraticule10()) ?? "";
+
+/**
+ * Where the world view zooms to before handing over to the states view:
+ * the contiguous US, padded out to the frame's aspect ratio.
+ */
+const zoomBox = (() => {
+  const [[x0, y0], [x1, y1]] = worldPath.bounds({
+    type: "MultiPoint",
+    coordinates: [
+      [-125, 24],
+      [-66, 24],
+      [-125, 50],
+      [-66, 50],
+      [-96, 50],
+      [-96, 24],
+    ],
+  });
+  const cx = (x0 + x1) / 2;
+  const cy = (y0 + y1) / 2;
+  const w = Math.max(x1 - x0, ((y1 - y0) * W) / H) * 1.08;
+  const h = (w * H) / W;
+  return [cx - w / 2, cy - h / 2, w, h].map((n) => n.toFixed(1)).join(" ");
+})();
+
+/**
+ * Visited places that simplify down to almost nothing (small islands such as
+ * Aruba) get a dot at their centroid so they are still visible.
+ */
+const MIN_AREA = 6; // square px in the viewBox
+const markers = countries
+  .filter(
+    (f) =>
+      visitedCountries.has(f.properties.name) && worldPath.area(f) < MIN_AREA,
+  )
+  .map((f) => {
+    const raw = rawByName.get(f.properties.name) ?? f;
+    const [x, y] = worldProjection(geoCentroid(raw)) ?? [0, 0];
+    return { name: f.properties.name, x: +x.toFixed(1), y: +y.toFixed(1) };
+  });
+---
+
+<div data-travel-map>
+  <div class="flex flex-wrap items-center justify-between gap-3">
+    <p class="label">
+      {countryCount} countries · {visitedStates.size} of 50 states
+    </p>
+    <div
+      class="relative flex rounded-full border border-edge p-0.5"
+      role="tablist"
+      aria-label="Map view"
+    >
+      <span
+        class="absolute top-0.5 bottom-0.5 left-0 w-0 rounded-full bg-ink"
+        data-indicator
+        aria-hidden="true"
+      ></span>
+      <button
+        type="button"
+        role="tab"
+        aria-selected="true"
+        data-view-button="world"
+        class="tab"
+      >
+        World
+      </button>
+      <button
+        type="button"
+        role="tab"
+        aria-selected="false"
+        data-view-button="us"
+        class="tab"
+      >
+        United States
+      </button>
+    </div>
+  </div>
+
+  <div class="stage relative mt-5" data-stage>
+    <svg
+      viewBox={`0 0 ${W} ${H}`}
+      data-view="world"
+      data-active
+      data-zoom={zoomBox}
+      role="img"
+      aria-label={`World map with ${countryCount} visited countries highlighted`}
+    >
+      <path d={sphere} class="ocean" />
+      <path d={graticule} class="graticule" />
+      {countries.map((f) => {
+        const name = f.properties.name;
+        return (
+          <path
+            d={worldPath(f) ?? ""}
+            class:list={[
+              "place",
+              { visited: visitedCountries.has(name) },
+              { drill: name === US_NAME },
+            ]}
+            data-name={displayName(name)}
+            data-drill={name === US_NAME ? "us" : undefined}
+          />
+        );
+      })}
+      {markers.map((m) => (
+        <circle
+          cx={m.x}
+          cy={m.y}
+          r="3.5"
+          class="place visited marker"
+          data-name={displayName(m.name)}
+        />
+      ))}
+      <path d={sphere} class="rim" />
+      <path class="hover-ring" data-outline />
+    </svg>
+
+    <svg
+      viewBox={`0 0 ${W} ${H}`}
+      data-view="us"
+      role="img"
+      aria-label={`United States map with ${visitedStates.size} visited states highlighted`}
+    >
+      {states.map((f) => (
+        <path
+          d={usPath(f) ?? ""}
+          class:list={[
+            "place state",
+            { visited: visitedStates.has(f.properties.name) },
+          ]}
+          data-name={f.properties.name}
+        />
+      ))}
+      <path class="hover-ring" data-outline />
+    </svg>
+
+    <div class="tooltip" data-tooltip aria-hidden="true">
+      <div class="pill">
+        <span class="dot"></span>
+        <span data-tooltip-text></span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  /* ---- View toggle ------------------------------------------------------ */
+  .tab {
+    position: relative;
+    z-index: 1;
+    border-radius: 9999px;
+    padding: 0.25rem 0.75rem;
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--color-ink-faint);
+    transition: color 300ms var(--ease-out-soft);
+  }
+  .tab:hover {
+    color: var(--color-ink);
+  }
+  .tab[aria-selected="true"] {
+    color: var(--color-canvas);
+    /* Until the script measures the tabs, the selected one paints its own pill. */
+    background: var(--color-ink);
+  }
+  [data-ready] .tab[aria-selected="true"] {
+    background: transparent;
+  }
+  [data-indicator] {
+    transition:
+      translate 400ms var(--ease-out-soft),
+      width 400ms var(--ease-out-soft);
+  }
+
+  /* ---- Map views -------------------------------------------------------- */
+  .stage {
+    display: grid;
+  }
+  .stage > svg {
+    grid-area: 1 / 1;
+    width: 100%;
+    height: auto;
+    overflow: visible;
+    stroke-linejoin: round;
+    stroke-linecap: round;
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transform: scale(1.05);
+    transform-origin: 50% 50%;
+    transition:
+      opacity 300ms ease-in 200ms,
+      transform 500ms var(--ease-out-soft),
+      visibility 0s linear 500ms;
+  }
+  .stage > svg[data-view="world"] {
+    transform: none;
+  }
+  .stage > svg[data-active] {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+    transform: none;
+    transition:
+      opacity 450ms ease-out 250ms,
+      transform 650ms var(--ease-out-soft) 250ms,
+      visibility 0s;
+  }
+
+  .ocean {
+    fill: var(--color-ocean);
+  }
+  .rim {
+    fill: none;
+    stroke: var(--color-edge);
+    stroke-width: 1px;
+    vector-effect: non-scaling-stroke;
+  }
+  .graticule {
+    fill: none;
+    stroke: var(--color-edge);
+    stroke-width: 0.5px;
+    stroke-opacity: 0.7;
+    vector-effect: non-scaling-stroke;
+  }
+  .place {
+    fill: var(--color-land);
+    stroke: var(--color-land-border);
+    stroke-width: 0.5px;
+    vector-effect: non-scaling-stroke;
+    transition: fill 300ms var(--ease-out-soft);
+  }
+  .place.state {
+    stroke-width: 1px;
+  }
+  .place.visited {
+    fill: var(--color-visited);
+  }
+  .place.drill {
+    cursor: zoom-in;
+  }
+  .marker {
+    stroke: var(--color-canvas);
+    stroke-width: 1.5px;
+  }
+
+  /* Hover outline: drawn on top of everything, so the fill never changes. */
+  .hover-ring {
+    fill: none;
+    stroke: var(--color-ink);
+    stroke-width: 1.5px;
+    vector-effect: non-scaling-stroke;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 150ms ease-out;
+  }
+  .hover-ring[data-on] {
+    opacity: 1;
+  }
+
+  /* ---- Tooltip ---------------------------------------------------------- */
+  .tooltip {
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 10;
+    pointer-events: none;
+    will-change: translate;
+  }
+  .pill {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    white-space: nowrap;
+    border-radius: 9999px;
+    border: 1px solid color-mix(in oklch, var(--color-canvas) 12%, transparent);
+    background: color-mix(in oklch, var(--color-ink) 92%, transparent);
+    backdrop-filter: blur(6px);
+    padding: 0.25rem 0.65rem;
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    color: var(--color-canvas);
+    box-shadow: 0 8px 24px -8px
+      color-mix(in oklch, var(--color-ink) 40%, transparent);
+    opacity: 0;
+    scale: 0.92;
+    transform-origin: top left;
+    transition:
+      opacity 160ms ease-out,
+      scale 220ms var(--ease-out-soft);
+  }
+  [data-open] > .pill {
+    opacity: 1;
+    scale: 1;
+  }
+  .dot {
+    width: 0.4rem;
+    height: 0.4rem;
+    border-radius: 9999px;
+    background: var(--color-ink-faint);
+  }
+  [data-visited] .dot {
+    background: var(--color-visited);
+  }
+</style>
+
+<script>
+  type View = "world" | "us";
+
+  const EASE = (t: number) =>
+    t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+  const reducedMotion = () =>
+    matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  function init() {
+    for (const root of document.querySelectorAll<HTMLElement>(
+      "[data-travel-map]",
+    )) {
+      if (root.dataset.ready !== undefined) continue;
+      setup(root);
+      root.dataset.ready = "";
+    }
+  }
+
+  function setup(root: HTMLElement) {
+    const stage = root.querySelector<HTMLElement>("[data-stage]")!;
+    const worldSvg = root.querySelector<SVGSVGElement>('[data-view="world"]')!;
+    const usSvg = root.querySelector<SVGSVGElement>('[data-view="us"]')!;
+    const tabs = [
+      ...root.querySelectorAll<HTMLButtonElement>("[data-view-button]"),
+    ];
+    const tablist = root.querySelector<HTMLElement>('[role="tablist"]')!;
+    const indicator = root.querySelector<HTMLElement>("[data-indicator]")!;
+    const tip = root.querySelector<HTMLElement>("[data-tooltip]")!;
+    const tipText = root.querySelector<HTMLElement>("[data-tooltip-text]")!;
+
+    const fullBox = worldSvg.getAttribute("viewBox")!;
+    const zoomBox = worldSvg.dataset.zoom!;
+    let view: View = "world";
+
+    // ---- Toggle indicator ------------------------------------------------
+    const moveIndicator = () => {
+      const active = tabs.find((t) => t.dataset.viewButton === view)!;
+      indicator.style.width = `${active.offsetWidth}px`;
+      indicator.style.translate = `${active.offsetLeft}px 0`;
+    };
+    // Place it without animating on first paint, then enable transitions.
+    indicator.style.transition = "none";
+    moveIndicator();
+    requestAnimationFrame(() => (indicator.style.transition = ""));
+    new ResizeObserver(moveIndicator).observe(tablist);
+
+    // ---- Zoom between views ----------------------------------------------
+    let tween = 0;
+    const animateViewBox = (from: string, to: string, ms: number) => {
+      const a = from.split(" ").map(Number);
+      const b = to.split(" ").map(Number);
+      const id = ++tween;
+      if (reducedMotion()) {
+        worldSvg.setAttribute("viewBox", to);
+        return;
+      }
+      const start = performance.now();
+      const frame = (now: number) => {
+        if (id !== tween) return; // superseded by a newer switch
+        const t = Math.min(1, (now - start) / ms);
+        const e = EASE(t);
+        worldSvg.setAttribute(
+          "viewBox",
+          a.map((v, i) => (v + (b[i]! - v) * e).toFixed(2)).join(" "),
+        );
+        if (t < 1) requestAnimationFrame(frame);
+      };
+      requestAnimationFrame(frame);
+    };
+
+    const showView = (next: View) => {
+      if (next === view) return;
+      view = next;
+      tabs.forEach((t) =>
+        t.setAttribute("aria-selected", String(t.dataset.viewButton === view)),
+      );
+      moveIndicator();
+      hideTip();
+      worldSvg.toggleAttribute("data-active", view === "world");
+      usSvg.toggleAttribute("data-active", view === "us");
+      animateViewBox(
+        worldSvg.getAttribute("viewBox")!,
+        view === "us" ? zoomBox : fullBox,
+        750,
+      );
+    };
+
+    tabs.forEach((t) =>
+      t.addEventListener("click", () => showView(t.dataset.viewButton as View)),
+    );
+
+    // ---- Tooltip and hover outline ---------------------------------------
+    // The tooltip eases toward the pointer instead of snapping to it.
+    let target = { x: 0, y: 0 };
+    let pos = { x: 0, y: 0 };
+    let raf = 0;
+    const follow = () => {
+      pos.x += (target.x - pos.x) * 0.35;
+      pos.y += (target.y - pos.y) * 0.35;
+      tip.style.translate = `${pos.x.toFixed(1)}px ${pos.y.toFixed(1)}px`;
+      raf =
+        Math.abs(target.x - pos.x) + Math.abs(target.y - pos.y) > 0.3
+          ? requestAnimationFrame(follow)
+          : 0;
+    };
+    const aim = (clientX: number, clientY: number, snap: boolean) => {
+      const r = stage.getBoundingClientRect();
+      const x = clientX - r.left;
+      const y = clientY - r.top;
+      const w = tip.offsetWidth;
+      // Stay inside the map: flip to the left of the pointer near the right edge.
+      target = {
+        x: x + 14 + w > r.width ? x - w - 10 : x + 14,
+        y: Math.max(0, y + 16),
+      };
+      if (snap || reducedMotion()) {
+        cancelAnimationFrame(raf);
+        raf = 0;
+        pos = { ...target };
+        tip.style.translate = `${pos.x}px ${pos.y}px`;
+      } else if (!raf) {
+        raf = requestAnimationFrame(follow);
+      }
+    };
+
+    let hovered: SVGGraphicsElement | null = null;
+    const outlineFor = (el: SVGGraphicsElement) =>
+      el.ownerSVGElement!.querySelector<SVGPathElement>("[data-outline]")!;
+
+    const highlight = (el: SVGGraphicsElement | null) => {
+      if (el === hovered) return;
+      if (hovered) outlineFor(hovered).removeAttribute("data-on");
+      hovered = el;
+      if (!el) return;
+      const outline = outlineFor(el);
+      if (el instanceof SVGCircleElement) {
+        const cx = el.cx.baseVal.value;
+        const cy = el.cy.baseVal.value;
+        const r = el.r.baseVal.value;
+        outline.setAttribute(
+          "d",
+          `M${cx - r},${cy}a${r},${r} 0 1,0 ${2 * r},0a${r},${r} 0 1,0 ${-2 * r},0`,
+        );
+      } else {
+        outline.setAttribute("d", el.getAttribute("d") ?? "");
+      }
+      outline.setAttribute("data-on", "");
+    };
+
+    const showTip = (el: SVGGraphicsElement, e: MouseEvent) => {
+      const wasOpen = tip.hasAttribute("data-open");
+      tipText.textContent = el.dataset.name ?? "";
+      tip.toggleAttribute("data-visited", el.classList.contains("visited"));
+      tip.setAttribute("data-open", "");
+      highlight(el);
+      aim(e.clientX, e.clientY, !wasOpen);
+    };
+    function hideTip() {
+      tip.removeAttribute("data-open");
+      highlight(null);
+    }
+
+    const placeAt = (e: Event) =>
+      (e.target as Element | null)?.closest<SVGGraphicsElement>(
+        "svg[data-active] .place",
+      ) ?? null;
+
+    stage.addEventListener("pointermove", (e) => {
+      if (e.pointerType !== "mouse") return;
+      const el = placeAt(e);
+      if (el) showTip(el, e);
+      else hideTip();
+    });
+    stage.addEventListener("pointerleave", hideTip);
+
+    // Click drills into the US. On touch, a tap also shows the name.
+    stage.addEventListener("click", (e) => {
+      const el = placeAt(e);
+      if (el?.dataset.drill) {
+        showView(el.dataset.drill as View);
+        return;
+      }
+      if ((e as PointerEvent).pointerType === "mouse") return;
+      if (el) showTip(el, e);
+      else hideTip();
+    });
+  }
+
+  document.addEventListener("astro:page-load", init);
+</script>

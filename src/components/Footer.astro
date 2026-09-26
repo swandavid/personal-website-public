@@ -1,0 +1,49 @@
+---
+import { ArrowUpRight, FileText, Mail } from "lucide-react";
+import ViewCounter from "./ViewCounter.astro";
+import { EMAIL, GITHUB_URL, LINKEDIN_URL } from "@/data/contact";
+---
+
+<section
+  id="contact"
+  class="mt-16 rounded-2xl border border-edge bg-surface p-4 md:p-6"
+>
+  <h2 class="text-xl font-semibold tracking-tight text-ink md:text-2xl">
+    Get in touch
+  </h2>
+  <p class="mt-2 max-w-xl text-sm leading-relaxed text-ink-muted md:text-base">
+    I'm open to software roles in autonomy, robotics and edge inference in the
+    San Francisco Bay Area. The quickest way to reach me is email.
+  </p>
+  <div class="mt-6 flex flex-wrap items-center gap-x-6 gap-y-3">
+    <a
+      href={`mailto:${EMAIL}`}
+      class="inline-flex items-center gap-2 rounded-full border border-accent/40 bg-accent/10 px-4 py-1.5 text-sm font-medium text-accent transition-colors hover:bg-accent/20"
+    >
+      <Mail className="size-4" aria-hidden="true" />
+      {EMAIL}
+    </a>
+    <a
+      href="/David_Swan_Resume.pdf"
+      target="_blank"
+      rel="noopener noreferrer"
+      class="link-arrow text-sm"
+    >
+      <FileText className="size-4" aria-hidden="true" />
+      Résumé
+    </a>
+    <a href={LINKEDIN_URL} class="link-arrow text-sm">
+      LinkedIn
+      <ArrowUpRight className="size-4" aria-hidden="true" />
+    </a>
+    <a href={GITHUB_URL} class="link-arrow text-sm">
+      GitHub
+      <ArrowUpRight className="size-4" aria-hidden="true" />
+    </a>
+  </div>
+</section>
+
+<footer class="mt-16 p-4 md:p-6">
+  <p class="text-sm text-ink-faint">© {new Date().getFullYear()} David Swan</p>
+  <ViewCounter />
+</footer>

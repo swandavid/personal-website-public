@@ -1,0 +1,114 @@
+---
+import { ClientRouter } from "astro:transitions";
+import { Font, getImage } from "astro:assets";
+import headshot from "@/assets/headshot.jpg";
+import { GITHUB_URL, LINKEDIN_URL } from "@/data/contact";
+import "@/styles/global.css";
+
+interface Props {
+  title: string;
+  description?: string;
+  /** Path for OG image, relative to site root. */
+  image?: string;
+}
+
+const {
+  title,
+  description = "David Swan. Software engineer in autonomy, robotics and edge ML: ROS2 navigation, on-board model serving on FPGAs and C++/Python flight software at Lockheed Martin Space. Based in the San Francisco Bay Area.",
+  image = "/og.png",
+} = Astro.props;
+
+const siteName = "David Swan";
+const fullTitle = title === siteName ? title : `${title} · ${siteName}`;
+const canonical = new URL(Astro.url.pathname, Astro.site);
+
+// Lets search engines show a proper profile card for name searches.
+const person = {
+  "@context": "https://schema.org",
+  "@type": "Person",
+  name: "David Swan",
+  url: Astro.site?.href,
+  image: new URL(
+    (await getImage({ src: headshot, width: 400 })).src,
+    Astro.site,
+  ).href,
+  jobTitle: "AI Research Lead Engineer",
+  address: {
+    "@type": "PostalAddress",
+    addressLocality: "San Francisco Bay Area",
+    addressRegion: "CA",
+  },
+  worksFor: { "@type": "Organization", name: "Lockheed Martin Space" },
+  alumniOf: [
+    { "@type": "CollegeOrUniversity", name: "Georgia Institute of Technology" },
+    { "@type": "CollegeOrUniversity", name: "Pennsylvania State University" },
+  ],
+  knowsAbout: [
+    "Autonomy",
+    "Robotics",
+    "Edge inference",
+    "Path planning",
+    "ROS2",
+    "Model quantization",
+    "Model serving",
+    "C++",
+    "Python",
+    "Flight software",
+  ],
+  sameAs: [LINKEDIN_URL, GITHUB_URL],
+};
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{fullTitle}</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonical} />
+    <link rel="icon" type="image/svg+xml" href="/swan.svg" />
+    <link rel="sitemap" href="/sitemap-index.xml" />
+    <meta name="theme-color" content="#0c110f" />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content={siteName} />
+    <meta property="og:title" content={fullTitle} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:image" content={new URL(image, Astro.site)} />
+    <meta name="twitter:card" content="summary_large_image" />
+    <script
+      is:inline
+      type="application/ld+json"
+      set:html={JSON.stringify(person)}
+    ></script>
+    <Font cssVariable="--font-inter" preload />
+    <Font cssVariable="--font-jetbrains-mono" />
+    <ClientRouter />
+
+    <script is:inline>
+      // Apply the saved or system theme before first paint so there is no flash.
+      // Re-run after view transitions because the <html> element is swapped.
+      (function () {
+        function applyTheme() {
+          let saved = null;
+          try {
+            saved = localStorage.getItem("theme");
+          } catch {
+            // Storage blocked: fall back to the OS preference.
+          }
+          const dark =
+            saved === "dark" ||
+            (!saved && matchMedia("(prefers-color-scheme: dark)").matches);
+          document.documentElement.classList.toggle("dark", dark);
+        }
+        applyTheme();
+        document.addEventListener("astro:after-swap", applyTheme);
+      })();
+    </script>
+  </head>
+  <body>
+    <slot />
+  </body>
+</html>

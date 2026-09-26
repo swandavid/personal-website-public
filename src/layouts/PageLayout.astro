@@ -1,0 +1,38 @@
+---
+/** Layout for secondary pages (404, rover): a narrow column with a small top nav. */
+import BaseLayout from "./BaseLayout.astro";
+import ViewCounter from "@/components/ViewCounter.astro";
+
+interface Props {
+  title: string;
+  description?: string;
+  /** Wider column for pages built around a large demo. */
+  wide?: boolean;
+}
+const { title, description, wide = false } = Astro.props;
+---
+
+<BaseLayout title={title} description={description}>
+  <div
+    class:list={[
+      "mx-auto px-4 py-8 md:px-8 md:py-12",
+      wide ? "max-w-5xl" : "max-w-3xl",
+    ]}
+  >
+    <nav class="mb-10 flex items-center justify-between" aria-label="Site">
+      <a href="/" class="font-bold text-ink">
+        David Swan
+      </a>
+      <a href="/" class="label transition-colors hover:text-ink">
+        Home
+      </a>
+    </nav>
+    <main>
+      <slot />
+    </main>
+    <footer class="mt-16 text-sm text-ink-faint">
+      © {new Date().getFullYear()} David Swan
+      <ViewCounter />
+    </footer>
+  </div>
+</BaseLayout>

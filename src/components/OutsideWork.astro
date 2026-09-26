@@ -1,0 +1,88 @@
+---
+import SectionHeading from "./SectionHeading.astro";
+import TravelMap from "./TravelMap.astro";
+import MarathonCourse from "./MarathonCourse.astro";
+import { ChevronDown, Medal } from "lucide-react";
+import race from "@/data/running.json";
+
+const raceDate = new Date(`${race.date}T12:00:00Z`).toLocaleDateString(
+  "en-US",
+  { month: "long", day: "numeric", year: "numeric", timeZone: "UTC" },
+);
+const stats = [
+  { label: "Distance", value: String(race.distanceMi), unit: "mi" },
+  {
+    label: "Elevation gain",
+    value: race.elevationGainFt.toLocaleString("en-US"),
+    unit: "ft",
+  },
+];
+---
+
+<section id="outside-work" class="mb-16 md:mb-24">
+  <SectionHeading title="Outside work" />
+  <p class="px-4 text-sm leading-relaxed text-ink-muted md:px-6 md:text-base">
+    In my spare time, I'm usually running, watching sports, learning, or
+    figuring out how things work.
+  </p>
+  <div class="card mt-6 md:mt-8">
+    <div class="grid grid-cols-[minmax(0,1fr)_42%] items-center gap-5 md:grid-cols-[minmax(0,1fr)_auto_15rem] md:gap-12">
+      <div>
+        <span class="inline-flex items-center gap-1.5 rounded-full border border-accent/30 bg-accent/10 px-2.5 py-0.5 font-mono text-[0.7rem] tracking-[0.16em] text-accent uppercase">
+          <Medal className="size-3" aria-hidden="true" />
+          Finisher
+        </span>
+        <h3 class="mt-3 text-lg leading-tight font-semibold tracking-tight text-ink md:text-2xl">
+          {race.event}
+        </h3>
+        <p class="mt-1 text-sm text-ink-faint">
+          <time datetime={race.date}>{raceDate}</time>
+        </p>
+        <dl class="mt-5 flex flex-col gap-3 md:hidden">
+          {stats.map((s) => (
+            <div>
+              <dt class="label">{s.label}</dt>
+              <dd class="mt-0.5 font-mono text-xl font-semibold tracking-tight text-ink">
+                {s.value}
+                <span class="ml-1 text-xs font-normal text-ink-faint">
+                  {s.unit}
+                </span>
+              </dd>
+            </div>
+          ))}
+        </dl>
+      </div>
+      <dl class="hidden flex-col gap-6 md:flex">
+        {stats.map((s) => (
+          <div>
+            <dt class="label">{s.label}</dt>
+            <dd class="mt-1 font-mono text-3xl font-semibold tracking-tight text-ink">
+              {s.value}
+              <span class="ml-1 text-sm font-normal text-ink-faint">
+                {s.unit}
+              </span>
+            </dd>
+          </div>
+        ))}
+      </dl>
+      <MarathonCourse />
+    </div>
+  </div>
+
+  <details class="card group/map mt-6 md:mt-8">
+    <summary class="label flex cursor-pointer list-none items-center justify-between gap-3 transition-colors hover:text-ink [&::-webkit-details-marker]:hidden">
+      Places I've been
+      <span class="flex items-center gap-1.5">
+        <span class="group-open/map:hidden">Show</span>
+        <span class="hidden group-open/map:inline">Hide</span>
+        <ChevronDown
+          className="size-4 transition-transform group-open/map:rotate-180"
+          aria-hidden="true"
+        />
+      </span>
+    </summary>
+    <div class="mt-6">
+      <TravelMap />
+    </div>
+  </details>
+</section>

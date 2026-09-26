@@ -1,0 +1,274 @@
+<!doctype html>
+<!--
+  Résumé source. `bun run resume` renders it to public/David_Swan_Resume.pdf.
+  Kept ATS-friendly on purpose: one column, real text (no images or tables),
+  standard section names, plain bullets and dates on the same line as the role.
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>David Swan Résumé</title>
+    <style>
+      /* FONTS */
+      @page {
+        size: letter;
+        margin: 0.4in 0.6in;
+      }
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      body {
+        font-family: "EB Garamond", Garamond, "Times New Roman", serif;
+        font-size: 10.25pt;
+        line-height: 1.17;
+        color: #1a1a1a;
+      }
+      a {
+        color: #1155cc;
+        text-decoration: underline;
+      }
+      header {
+        text-align: center;
+        margin-bottom: 8pt;
+      }
+      h1 {
+        font-size: 19pt;
+        font-weight: 700;
+        letter-spacing: 0.02em;
+      }
+      .contact {
+        margin-top: 2pt;
+        font-size: 10pt;
+      }
+      h2 {
+        font-size: 11pt;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.02em;
+        color: #444;
+        border-bottom: 1px solid #1a1a1a;
+        padding-bottom: 1pt;
+        margin: 8pt 0 4pt;
+      }
+      .row {
+        display: flex;
+        justify-content: space-between;
+        gap: 12pt;
+      }
+      .org {
+        font-weight: 700;
+      }
+      .sub {
+        color: #555;
+      }
+      .entry {
+        margin-bottom: 5pt;
+      }
+      .role {
+        margin-top: 4pt;
+      }
+      ul {
+        margin: 1pt 0 0 14pt;
+      }
+      li {
+        margin-bottom: 1pt;
+        padding-left: 2pt;
+      }
+      b {
+        font-weight: 700;
+      }
+      .skills p {
+        margin-bottom: 1pt;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>DAVID SWAN</h1>
+      <p class="contact">
+        San Francisco Bay Area, CA | adavidswan@gmail.com |
+        <a href="https://swandavid.com">swandavid.com</a> |
+        <a href="https://www.linkedin.com/in/d-swan/">linkedin.com/in/d-swan</a>
+      </p>
+    </header>
+
+    <section>
+      <h2>Summary</h2>
+      <p>
+        Software engineer with 4 years at Lockheed Martin Space building
+        autonomy and edge-inference systems for space hardware, currently
+        leading C++ and Python flight software and on-board ML model serving on
+        FPGAs. Also built ROS2 navigation for autonomous rovers and co-founded
+        Nexus Odds, a SaaS with 1,290+ lifetime paying customers.
+      </p>
+    </section>
+
+    <section>
+      <h2>Work Experience</h2>
+      <div class="entry">
+        <div class="row">
+          <span class="org">Lockheed Martin Space</span>
+          <span>Palo Alto, CA</span>
+        </div>
+
+        <div class="row role">
+          <span>AI Research Lead Engineer</span>
+          <span>Mar 2026 – Present</span>
+        </div>
+        <ul>
+          <li>
+            Lead development of <b>C++</b> and <b>Python</b> flight software
+            that runs fiber-optic loopback bit error rate (BER) tests at 25.875
+            Gbps and sends the results to the ground as telemetry
+          </li>
+          <li>
+            Own the <b>Yocto Project</b> builds of the custom embedded
+            <b>Linux</b> images that run on flight hardware
+          </li>
+          <li>
+            Drive on-board model serving with <b>Ray Serve</b>, quantizing
+            models and running multiple models concurrently on
+            <b>FPGA</b> boards
+          </li>
+          <li>
+            Architected and deployed a complete autonomous rover navigation
+            system in <b>ROS2</b>, integrating LIO-SAM for 3D SLAM and a tuned
+            Nav2 stack for motion control
+          </li>
+          <li>
+            Delivered real-time open-vocabulary object detection and text-based
+            waypoint navigation (custom <b>ROS2</b> Python package) on a tight
+            deadline, helping win new business
+          </li>
+        </ul>
+
+        <div class="row role">
+          <span>AI Research Engineer</span>
+          <span>Mar 2024 – Mar 2026</span>
+        </div>
+        <ul>
+          <li>
+            Achieved a 1500× inference speedup for an automatic target
+            recognition (ATR) model on low-power (low-SWaP), path-to-flight
+            hardware by quantizing and compiling it, then recovered full
+            accuracy with quantization-aware training
+          </li>
+          <li>
+            Accelerated super-resolution and object detection inference 15× on
+            AMD and NVIDIA platforms with INT8 quantization, pruning and
+            hardware-specific optimization in <b>Vitis AI</b> and <b>CUDA</b>
+          </li>
+          <li>
+            Led development of applications that interface with proprietary
+            flight software, using LiDAR and electro-optical data with deep
+            learning models for real-time target identification and tracking
+          </li>
+          <li>
+            Built real-time plotting tools in <b>Python</b> using
+            multiprocessing and sockets to visualize live data streams
+          </li>
+          <li>
+            Established ground-test infrastructure for ML algorithms across a
+            suite of single-board computers to de-risk satellite deployments
+          </li>
+        </ul>
+
+        <div class="row role">
+          <span>Associate AI Research Engineer</span>
+          <span>Aug 2022 – Mar 2024</span>
+        </div>
+        <ul>
+          <li>
+            Contributed to a <b>Gazebo</b> space simulation for collaborative
+            motion planning on a dual UR10e robotic arm testbench (<b>ROS1</b>)
+          </li>
+          <li>
+            Built a satellite orchestration platform web app with <b>React</b>,
+            <b>JavaScript</b> and <b>Tailwind CSS</b>
+          </li>
+        </ul>
+
+        <div class="row role">
+          <span>Intern</span>
+          <span>Jan 2022 – May 2022</span>
+        </div>
+        <ul>
+          <li>
+            Fine-tuned an object detection model in <b>PyTorch</b> and deployed
+            it on an NVIDIA Jetson, reaching 90% mAP detecting people from drone
+            imagery
+          </li>
+        </ul>
+      </div>
+      <div class="entry">
+        <div class="row">
+          <span class="org">Nexus Odds</span>
+          <a href="https://nexusodds.com">nexusodds.com</a>
+        </div>
+        <div class="row role">
+          <span>Co-Founder</span>
+          <span>May 2024 – Present</span>
+        </div>
+        <ul>
+          <li>
+            Launched a sports betting analytics SaaS that has grown to 2,600+
+            registered users and 1,290+ lifetime paying customers, covering 33+
+            sportsbooks and prediction markets
+          </li>
+          <li>
+            Designed the original <b>Python</b> data-collection framework and
+            serverless <b>AWS</b> ingestion pipeline; the platform now processes
+            ~32M odds records a day (~1B a month, 435K in a peak minute)
+          </li>
+        </ul>
+      </div>
+    </section>
+
+    <section>
+      <h2>Education</h2>
+      <div class="entry">
+        <div class="row">
+          <span class="org">Georgia Institute of Technology</span>
+          <span>Dec 2025</span>
+        </div>
+        <div class="row sub">
+          <span>
+            Master of Science in Computer Science, Specialization in Interactive
+            Intelligence; completed while working full time
+          </span>
+        </div>
+      </div>
+      <div class="entry">
+        <div class="row">
+          <span class="org">The Pennsylvania State University</span>
+          <span>May 2022</span>
+        </div>
+        <div class="row sub">
+          <span>
+            Bachelor of Science in Computer Engineering, Minor in Mathematics
+          </span>
+        </div>
+      </div>
+    </section>
+
+    <section class="skills">
+      <h2>Skills</h2>
+      <p><b>Languages:</b> C++ (embedded), Python, TypeScript, JavaScript</p>
+      <p>
+        <b>Robotics and Autonomy:</b> ROS2, ROS1, Nav2, 3D SLAM (LIO-SAM),
+        Gazebo, LiDAR/EO perception, object tracking
+      </p>
+      <p>
+        <b>ML Inference:</b> PyTorch, TensorFlow, TensorRT, CUDA, Vitis AI, Ray
+        Serve, INT8 quantization, QAT, pruning
+      </p>
+      <p>
+        <b>Embedded and Hardware:</b> Embedded Linux, Yocto, FPGA (AMD Xilinx
+        Versal, UltraScale+), NVIDIA Jetson Orin/Xavier
+      </p>
+      <p><b>Tools and Cloud:</b> Linux, Git, Docker, AWS, React, Node.js</p>
+    </section>
+  </body>
+</html>

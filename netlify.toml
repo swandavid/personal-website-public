@@ -1,0 +1,18 @@
+[build]
+  command = "bun run build"
+  publish = "dist"
+
+[build.environment]
+  # Astro 7 needs Node 22.12+. Bun is auto-detected from bun.lock.
+  NODE_VERSION = "22"
+
+[[headers]]
+  for = "/_astro/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+# Old résumé URL, kept working for links already sent out.
+[[redirects]]
+  from = "/resume.pdf"
+  to = "/David_Swan_Resume.pdf"
+  status = 301

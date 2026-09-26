@@ -1,0 +1,17 @@
+[
+  {
+    "id": "georgia-tech",
+    "period": "2023 — 2025",
+    "degree": "Master of Science in Computer Science",
+    "minor": "Specialization in Interactive Intelligence",
+    "institution": "Georgia Institute of Technology",
+    "description": "Completed while working full time at Lockheed Martin."
+  },
+  {
+    "id": "penn-state",
+    "period": "2018 — 2022",
+    "degree": "Bachelor of Science in Computer Engineering",
+    "minor": "Minor in Mathematics",
+    "institution": "Pennsylvania State University"
+  }
+]

@@ -1,0 +1,34 @@
+{
+  "_comment": "Names must match world-atlas (50m) country names and us-atlas state names exactly; the build fails on an unknown name so typos are caught. Washington DC is \"District of Columbia\". The UK is split into England, Scotland, Wales and Northern Ireland (src/data/uk-nations.json).",
+  "countries": [
+    "United States of America",
+    "Canada",
+    "Japan",
+    "Mexico",
+    "Dominican Rep.",
+    "Aruba",
+    "England"
+  ],
+  "states": [
+    "California",
+    "Connecticut",
+    "New Jersey",
+    "New Hampshire",
+    "Vermont",
+    "Massachusetts",
+    "North Carolina",
+    "Florida",
+    "Colorado",
+    "Oklahoma",
+    "Washington",
+    "District of Columbia",
+    "Virginia",
+    "Pennsylvania",
+    "New York",
+    "Michigan",
+    "Hawaii",
+    "Texas",
+    "Arizona",
+    "South Carolina"
+  ]
+}

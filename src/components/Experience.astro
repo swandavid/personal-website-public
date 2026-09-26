@@ -1,0 +1,57 @@
+---
+import { getCollection } from "astro:content";
+import { ExternalLink } from "lucide-react";
+import SectionHeading from "./SectionHeading.astro";
+
+const jobs = await getCollection("experience");
+---
+
+<section id="experience" class="mb-16 md:mb-24">
+  <SectionHeading title="Experience" />
+  {jobs.map(({ data: job }) => (
+    <div class="card mb-6 md:mb-8">
+      <a
+        href={job.companyUrl}
+        class="link-arrow text-base font-semibold md:text-lg"
+      >
+        {job.company}
+        <ExternalLink className="h-4 w-4 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+      </a>
+      <ul class="mt-3 mb-4 space-y-2 sm:space-y-1.5 md:mb-6">
+        {job.roles.map((role, i) => (
+          <li class="flex flex-col sm:flex-row sm:items-baseline sm:justify-between sm:gap-x-4">
+            <span class={i === 0 ? "font-medium text-ink" : "text-ink-faint"}>
+              {role.title}
+            </span>
+            <span class="label">{role.period}</span>
+          </li>
+        ))}
+      </ul>
+      {job.highlights && (
+        <ul class="mb-4 list-disc space-y-2 pl-5 text-sm leading-relaxed text-ink-faint marker:text-accent md:mb-6 md:text-base">
+          {job.highlights.map((item) => (
+            <li>{item}</li>
+          ))}
+        </ul>
+      )}
+      {job.technologies && (
+        <div class="flex flex-wrap gap-2 md:gap-3">
+          {job.technologies.map((tech) => (
+            <span class="tag">{tech}</span>
+          ))}
+        </div>
+      )}
+    </div>
+  ))}
+  <div class="mt-8 px-6 md:px-8">
+    <a
+      href="/David_Swan_Resume.pdf"
+      target="_blank"
+      rel="noopener noreferrer"
+      class="link-arrow text-base md:text-lg"
+    >
+      Earlier roles in the full résumé
+      <ExternalLink className="h-4 w-4 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+    </a>
+  </div>
+</section>

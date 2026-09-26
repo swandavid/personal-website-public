@@ -1,0 +1,329 @@
+---
+/**
+ * "Inside the rover": a high-detail 3D model with hoverable parts and
+ * wiring. Only the markup and part list ship with the page; the 3D view
+ * loads when the section scrolls near.
+ */
+import { GROUPS, PARTS, WIRES } from "./anatomy-parts";
+
+const top = PARTS.filter((p) => !p.of && p.group !== "Wiring");
+---
+
+<div data-anatomy class="anatomy relative">
+  <div class="stage relative aspect-[4/3] overflow-hidden rounded-2xl border border-edge sm:aspect-[16/9]">
+    <canvas
+      data-anatomy-canvas
+      class="absolute inset-0 size-full"
+      aria-hidden="true"
+    ></canvas>
+    <p
+      data-anatomy-status
+      class="loading absolute inset-0 grid place-items-center"
+    >
+      Loading 3D model
+    </p>
+    <div class="modes absolute top-3 right-3" role="group" aria-label="View">
+      <button type="button" data-mode="xray" aria-pressed="true">
+        X-ray
+      </button>
+      <button type="button" data-mode="flight" aria-pressed="false">
+        Flight
+      </button>
+    </div>
+    <p class="hint pointer-events-none absolute bottom-3 left-3">
+      <span data-pointer-fine>
+        Hover a part or wire · click to pin · drag to turn
+      </span>
+      <span data-pointer-coarse>Tap a part or wire · two fingers to turn</span>
+    </p>
+  </div>
+  <div data-tip class="tip" hidden aria-live="polite">
+    <p class="tip-group" data-tip-group></p>
+    <p class="tip-title" data-tip-title></p>
+    <p class="tip-body" data-tip-body></p>
+    <dl class="tip-facts">
+      <div>
+        <dt>Why it's built this way</dt>
+        <dd data-tip-basis></dd>
+      </div>
+      <div>
+        <dt>In the simulation</dt>
+        <dd data-tip-sim></dd>
+      </div>
+      <div>
+        <dt>Wiring</dt>
+        <dd data-tip-links></dd>
+      </div>
+    </dl>
+  </div>
+
+  <div class="mt-4 grid gap-2.5">
+    {GROUPS.map((g) => (
+      <div class="row">
+        <p class="row-label">{g}</p>
+        <ul class="flex flex-wrap gap-1.5" aria-label={g}>
+          {top
+            .filter((p) => p.group === g)
+            .map((p) => (
+              <li>
+                <button
+                  type="button"
+                  class="chip"
+                  data-part={p.id}
+                  aria-pressed="false"
+                >
+                  {p.title}
+                </button>
+              </li>
+            ))}
+        </ul>
+      </div>
+    ))}
+    <div class="row">
+      <p class="row-label">Wiring</p>
+      <ul class="flex flex-wrap gap-1.5" aria-label="Wiring">
+        {WIRES.map((w) => (
+          <li>
+            <button
+              type="button"
+              class="chip"
+              data-part={w.id}
+              aria-pressed="false"
+            >
+              <span class="dot" style={`background:${w.color}`}></span>
+              {w.title}
+            </button>
+          </li>
+        ))}
+      </ul>
+    </div>
+  </div>
+  <p class="mt-3 text-xs leading-relaxed text-ink-faint">
+    Wire colours in the x-ray view are for reading the diagram. Real flight
+    harness is mostly white insulation, silver shielding and lacing tape, which
+    is how the Flight view shows it. The design is generic: it follows public
+    engineering practice and open standards, not any real vehicle.
+  </p>
+</div>
+
+<style>
+  .stage {
+    background: #040506;
+  }
+  canvas {
+    cursor: grab;
+    outline: none;
+  }
+  canvas:active {
+    cursor: grabbing;
+  }
+  .loading,
+  .hint {
+    font-family: var(--font-mono);
+    font-size: 0.66rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: rgb(236 238 240 / 0.55);
+  }
+  [data-loaded] .loading {
+    display: none;
+  }
+  .modes {
+    display: flex;
+    padding: 0.2rem;
+    border-radius: 9999px;
+    background: rgb(10 12 15 / 0.7);
+    border: 1px solid rgb(255 255 255 / 0.1);
+    backdrop-filter: blur(8px);
+  }
+  .modes button {
+    border-radius: 9999px;
+    padding: 0.25rem 0.75rem;
+    font-family: var(--font-mono);
+    font-size: 0.66rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: rgb(236 238 240 / 0.6);
+    transition:
+      color 200ms var(--ease-out-soft),
+      background-color 200ms var(--ease-out-soft);
+  }
+  .modes button[aria-pressed="true"] {
+    color: #0b0d10;
+    background: rgb(236 238 240 / 0.92);
+  }
+  [data-pointer-coarse] {
+    display: none;
+  }
+  @media (hover: none) {
+    [data-pointer-coarse] {
+      display: inline;
+    }
+    [data-pointer-fine] {
+      display: none;
+    }
+  }
+  .tip {
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 1;
+    width: min(22rem, calc(100% - 1.5rem));
+    padding: 0.8rem 0.95rem;
+    border-radius: 0.75rem;
+    background: rgb(10 12 15 / 0.88);
+    border: 1px solid rgb(255 255 255 / 0.1);
+    backdrop-filter: blur(10px);
+    color: rgb(236 238 240);
+    pointer-events: none;
+  }
+  /* On narrow screens the tip would cover the model: show it below instead. */
+  @media (max-width: 36rem) {
+    .tip {
+      position: static;
+      width: auto;
+      margin-top: 0.75rem;
+      transform: none !important;
+    }
+  }
+  .tip-group,
+  .tip-facts dt {
+    font-family: var(--font-mono);
+    font-size: 0.58rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--color-visited);
+  }
+  .tip-title {
+    margin-top: 0.2rem;
+    font-weight: 600;
+    font-size: 0.95rem;
+  }
+  .tip-body {
+    margin-top: 0.35rem;
+    font-size: 0.78rem;
+    line-height: 1.5;
+    color: rgb(236 238 240 / 0.82);
+  }
+  .tip-facts {
+    margin-top: 0.55rem;
+    display: grid;
+    gap: 0.45rem;
+    border-top: 1px solid rgb(255 255 255 / 0.08);
+    padding-top: 0.55rem;
+  }
+  .tip-facts dt {
+    color: rgb(236 238 240 / 0.45);
+  }
+  .tip-facts dd {
+    margin-top: 0.1rem;
+    font-size: 0.72rem;
+    line-height: 1.45;
+    color: rgb(236 238 240 / 0.7);
+  }
+  .row {
+    display: grid;
+    grid-template-columns: 5.5rem 1fr;
+    align-items: baseline;
+    gap: 0.5rem;
+  }
+  @media (max-width: 36rem) {
+    .row {
+      grid-template-columns: 1fr;
+      gap: 0.3rem;
+    }
+  }
+  .row-label {
+    font-family: var(--font-mono);
+    font-size: 0.62rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--color-ink-faint);
+  }
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    border-radius: 9999px;
+    border: 1px solid var(--color-edge);
+    padding: 0.25rem 0.75rem;
+    font-size: 0.78rem;
+    color: var(--color-ink-muted);
+    transition:
+      color 250ms var(--ease-out-soft),
+      border-color 250ms var(--ease-out-soft),
+      background-color 250ms var(--ease-out-soft);
+  }
+  .chip:hover,
+  .chip[aria-pressed="true"] {
+    color: var(--color-accent);
+    border-color: color-mix(in oklch, var(--color-accent) 50%, transparent);
+    background: color-mix(in oklch, var(--color-accent) 10%, transparent);
+  }
+  .dot {
+    width: 0.5rem;
+    height: 0.5rem;
+    border-radius: 9999px;
+  }
+</style>
+
+<script>
+  const hasWebGL = () => {
+    try {
+      return !!document.createElement("canvas").getContext("webgl2");
+    } catch {
+      return false;
+    }
+  };
+
+  function setup(root: HTMLElement) {
+    const status = root.querySelector<HTMLElement>("[data-anatomy-status]")!;
+    if (!hasWebGL()) {
+      status.textContent = "The 3D model needs WebGL";
+      return;
+    }
+    let aborted = false;
+    let teardown: (() => void) | null = null;
+    // Load the 3D view only when the section comes near the viewport.
+    const io = new IntersectionObserver(
+      async ([entry]) => {
+        if (!entry?.isIntersecting) return;
+        io.disconnect();
+        try {
+          const { mountAnatomy } = await import("./anatomy");
+          // The page may have been left while the module was loading.
+          if (aborted) return;
+          teardown = mountAnatomy(root, () => {
+            root.dataset.loaded = "";
+          });
+        } catch (err) {
+          console.error(err);
+          status.textContent = "Couldn't load the 3D model";
+        }
+      },
+      { rootMargin: "300px" },
+    );
+    io.observe(root);
+    document.addEventListener(
+      "astro:before-swap",
+      () => {
+        aborted = true;
+        io.disconnect();
+        teardown?.();
+      },
+      { once: true },
+    );
+  }
+
+  function init() {
+    for (const root of document.querySelectorAll<HTMLElement>(
+      "[data-anatomy]",
+    )) {
+      if (root.dataset.ready !== undefined) continue;
+      root.dataset.ready = "";
+      setup(root);
+    }
+  }
+  init();
+  document.addEventListener("astro:page-load", init);
+</script>

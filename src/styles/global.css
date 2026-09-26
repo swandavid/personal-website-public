@@ -1,0 +1,233 @@
+@import "tailwindcss";
+
+/* Class-based dark mode, toggled on <html> by the inline script in BaseLayout. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-mono:
+    var(--font-jetbrains-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  /* Site palette in OKLCH so light and dark keep the same perceived contrast.
+     Light values here, dark values override below. */
+  --color-canvas: oklch(99.4% 0.003 160);
+  --color-surface: oklch(96.6% 0.005 160);
+  --color-edge: oklch(91% 0.008 160);
+  --color-ink: oklch(21% 0.015 165);
+  --color-ink-muted: oklch(42% 0.015 165);
+  --color-ink-faint: oklch(56% 0.012 165);
+  --color-accent: oklch(52% 0.14 155);
+  --color-tag: oklch(47% 0.09 170);
+
+  /* Travel map. Land and ocean stay close to the page neutrals so only
+     visited places carry colour. */
+  --color-ocean: oklch(96.8% 0.008 200);
+  --color-land: oklch(90.5% 0.008 160);
+  --color-land-border: oklch(99% 0.003 160);
+  --color-visited: oklch(62% 0.15 155);
+
+  --ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1);
+
+  --animate-in-fade: in-fade 600ms var(--ease-out-soft) both;
+  @keyframes in-fade {
+    from {
+      opacity: 0;
+      translate: 0 2px;
+    }
+  }
+}
+
+@layer base {
+  .dark {
+    --color-canvas: oklch(15.5% 0.01 165);
+    --color-surface: oklch(20.5% 0.012 165);
+    --color-edge: oklch(27% 0.014 165);
+    --color-ink: oklch(97.5% 0.006 160);
+    --color-ink-muted: oklch(84% 0.012 160);
+    --color-ink-faint: oklch(66% 0.014 160);
+    --color-accent: oklch(79% 0.15 155);
+    --color-tag: oklch(80% 0.1 170);
+
+    --color-ocean: oklch(19% 0.014 200);
+    --color-land: oklch(29% 0.013 165);
+    --color-land-border: oklch(15.5% 0.01 165);
+    --color-visited: oklch(70% 0.15 155);
+  }
+
+  html {
+    scroll-behavior: smooth;
+    color-scheme: light;
+  }
+  /* Desktop runs at a 75% type scale. Sizes are in rem, so this scales text,
+     spacing and icons together, the same as 75% browser zoom. Breakpoints are
+     unaffected because media queries resolve rem against the browser default. */
+  @media (width >= 48rem) {
+    html {
+      font-size: 75%;
+    }
+  }
+  html.dark {
+    color-scheme: dark;
+  }
+  body {
+    @apply bg-canvas text-ink-muted font-sans antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  /* A fixed, very soft glow anchored top-left. Replaces the old cursor-following blur. */
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background: radial-gradient(
+      60rem 40rem at 10% -10%,
+      color-mix(in oklch, var(--color-accent) 10%, transparent),
+      transparent 70%
+    );
+  }
+  h1,
+  h2,
+  h3 {
+    text-wrap: balance;
+  }
+  /* Safari's "pretty" evens out every line of a paragraph, which on a
+     narrow screen leaves a wide empty strip down the right. Phones get
+     normal wrapping so lines fill the width. */
+  @media (width >= 48rem) {
+    p {
+      text-wrap: pretty;
+    }
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+  ::selection {
+    background: color-mix(in oklch, var(--color-accent) 30%, transparent);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+    *,
+    *::before,
+    *::after {
+      transition-duration: 0.01ms !important;
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+    }
+  }
+}
+
+@layer components {
+  .card {
+    @apply rounded-2xl border border-transparent bg-transparent p-4 md:p-6;
+    transition:
+      background-color 300ms var(--ease-out-soft),
+      border-color 300ms var(--ease-out-soft),
+      box-shadow 300ms var(--ease-out-soft),
+      translate 300ms var(--ease-out-soft);
+  }
+  /* Only on real hover: on touch screens a tap would leave it stuck on. */
+  @media (hover: hover) {
+    .card:hover {
+      @apply border-edge bg-surface;
+      translate: 0 -1px;
+      box-shadow:
+        inset 0 1px 0 color-mix(in oklch, var(--color-ink) 4%, transparent),
+        0 8px 24px -12px color-mix(in oklch, var(--color-ink) 18%, transparent);
+    }
+  }
+  /* Small uppercase monospace label: dates, nav, captions. */
+  .label {
+    @apply text-ink-faint font-mono text-xs tracking-[0.18em] uppercase;
+  }
+  .tag {
+    @apply border-edge bg-surface text-tag rounded-full border px-2.5 py-1 font-mono text-xs;
+  }
+  .link-arrow {
+    @apply text-ink hover:text-accent inline-flex items-center gap-2 transition-colors;
+  }
+  /* On phones a sticky heading that spans the full screen width and fades
+     out below, so content slides under it instead of being cut off at a hard
+     edge. On desktop a plain heading. The padding lines the text up with the
+     cards' text. */
+  .section-heading {
+    @apply bg-canvas/90 text-ink sticky top-0 z-20 -mx-4 mb-4 px-8 py-4 text-lg font-semibold tracking-tight backdrop-blur-md md:static md:mx-0 md:mb-2 md:bg-transparent md:px-6 md:py-0 md:text-2xl md:backdrop-blur-none;
+  }
+  @media (width >= 48rem) {
+    .section-heading::after {
+      display: none;
+    }
+  }
+  .section-heading::after {
+    content: "";
+    position: absolute;
+    inset: 100% 0 auto;
+    height: 1.25rem;
+    pointer-events: none;
+    background: linear-gradient(
+      color-mix(in oklch, var(--color-canvas) 90%, transparent),
+      transparent
+    );
+  }
+  .prose-note {
+    @apply text-ink-muted leading-relaxed;
+  }
+  .prose-note :is(h1, h2, h3, h4) {
+    @apply text-ink mt-8 mb-3 font-semibold tracking-tight;
+  }
+  .prose-note h1 {
+    @apply text-3xl;
+  }
+  .prose-note h2 {
+    @apply text-2xl;
+  }
+  .prose-note h3 {
+    @apply text-xl;
+  }
+  .prose-note p {
+    @apply my-4;
+  }
+  .prose-note a {
+    @apply text-accent underline underline-offset-2;
+  }
+  .prose-note :is(ul, ol) {
+    @apply my-4 pl-6;
+  }
+  .prose-note ul {
+    @apply list-disc;
+  }
+  .prose-note ol {
+    @apply list-decimal;
+  }
+  .prose-note li {
+    @apply my-1;
+  }
+  .prose-note code {
+    @apply bg-surface text-ink rounded px-1.5 py-0.5 font-mono text-sm;
+  }
+  .prose-note pre {
+    @apply border-edge my-4 overflow-x-auto rounded-xl border p-4 font-mono text-sm;
+  }
+  .prose-note pre code {
+    @apply bg-transparent p-0;
+  }
+  .prose-note blockquote {
+    @apply border-edge my-4 border-l-2 pl-4 italic;
+  }
+  .prose-note table {
+    @apply my-4 w-full text-sm;
+  }
+  .prose-note th {
+    @apply border-edge text-ink border-b py-2 text-left font-semibold;
+  }
+  .prose-note td {
+    @apply border-edge border-b py-2 align-top;
+  }
+  .prose-note hr {
+    @apply border-edge my-8;
+  }
+}

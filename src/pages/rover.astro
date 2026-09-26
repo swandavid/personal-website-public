@@ -1,0 +1,157 @@
+---
+import PageLayout from "@/layouts/PageLayout.astro";
+import RoverAnatomy from "@/components/rover/RoverAnatomy.astro";
+import RoverDemo from "@/components/rover/RoverDemo.astro";
+---
+
+<PageLayout
+  title="Rover path planner"
+  description="An interactive 3D lunar rover on unmapped terrain that maps its way with stereo cameras and an IMU, reroutes around hazards and backs out of trouble."
+  wide
+>
+  <header class="mb-8 max-w-3xl">
+    <p class="label">Personal project</p>
+    <h1 class="mt-2 text-3xl font-bold tracking-tight text-ink md:text-4xl">
+      Rover path planner
+    </h1>
+    <p class="mt-3 text-base leading-relaxed text-pretty text-ink-muted">
+      A lunar rover dropped onto ground nobody has mapped. It builds a map from
+      the 3D points its stereo cameras measure, plans across it, reroutes when
+      the map changes, and backs out of trouble when it gets it wrong.
+    </p>
+    <p class="mt-2 text-sm text-ink-faint">
+      Built in my own time; it isn't based on my work at Lockheed Martin.
+    </p>
+  </header>
+
+  <RoverDemo />
+
+  <p class="mt-6 max-w-3xl text-sm leading-relaxed text-ink-faint">
+    Click anywhere on the terrain, or on the map in the corner, to send the
+    rover there. Drag to slide the view around the map, right-drag or Shift-drag
+    to orbit, scroll to zoom; Follow brings the camera back to the rover. On a
+    touch screen, tap to send it and use two fingers to orbit and zoom.
+  </p>
+
+  <section class="mt-14">
+    <h2 class="text-xl font-semibold tracking-tight text-ink">
+      Inside the rover
+    </h2>
+    <p class="mt-2 mb-5 max-w-3xl text-sm leading-relaxed text-ink-muted">
+      A detailed model of the simulated rover: its cameras, flight computer,
+      motor controllers, actuators and the harness that ties them together.
+      Hover a part or a wire to see what it does, why it's built that way and
+      what it's wired to; the wires that serve it light up.
+    </p>
+    <RoverAnatomy />
+  </section>
+
+  <article class="prose-note mt-12 max-w-3xl">
+    <h2>How it works</h2>
+
+    <h3>Seeing in 3D</h3>
+    <p>
+      The rover has no map to start with, only the edge of its operating area,
+      and it assumes unknown ground is probably drivable. That optimism is what
+      lets it plan at all, and also why it has to replan so often.
+    </p>
+    <p>
+      Everything it learns comes from three stereo camera pairs. The pair on the
+      mast pans to look along the route and sweeps from side to side while the
+      rover waits. Wide-angle pairs low on the front and back cover the ground
+      around the wheels, which the mast can't see past the body. Each frame
+      becomes a cloud of 3D points. The simulation makes the points by casting
+      rays against the real surface and adding the error a stereo pair really
+      has: it grows with the square of distance, so far points are much shakier
+      than near ones. Turn on Sensors to see each camera's view traced on the
+      ground and the points streaming in.
+    </p>
+    <p>
+      The points fall into a one-metre elevation map. For each cell the rover
+      estimates the ground height from its lowest points, the tilt across its
+      wheelbase from the cells around it, how bumpy the ground is, and whether
+      something stands up out of it, like a rock. It never sees the true
+      terrain, only these estimates, so the back of a boulder stays unknown
+      until it drives past, and far ground can be misjudged until it gets
+      closer.
+    </p>
+
+    <h3>Knowing its own limits</h3>
+    <p>
+      One vehicle description drives everything: a 3 by 2.2 metre body, wheels
+      that can climb about 34 centimetres, a 20° limit on the slopes it will
+      choose, and 27° before it risks tipping. Ground past a limit is no-go,
+      hatched on the heat map. That is where a wheel must never go. Around every
+      no-go cell there is a keep-out ring about half a body wide, where the
+      centre of the rover can't go because its side would be over the hazard.
+      Beyond that is a ring where a turn could swing a corner over it, which is
+      costly but allowed. Steps are flagged a little below the true limit, as
+      the estimates are noisy and a missed rock costs far more than a detour.
+    </p>
+    <p>
+      An IMU reports the body's roll and pitch, shown under the status. The
+      rover slows on slopes it can feel. If the tilt nears its limit it stops
+      and backs off, whatever the map said.
+    </p>
+
+    <h3>Planning</h3>
+    <p>
+      Routes come from A* on an 8-connected one-metre grid, then get
+      straightened wherever a direct line is clear and no more costly. The
+      search runs in a Web Worker so it never stalls the animation. When the
+      cameras find a hazard on the route, the old path flashes orange and a new
+      one is planned; smaller changes are folded in quietly while it keeps
+      driving. The cost map updates only the cells new points touch.
+    </p>
+
+    <h3>Staying out of no-go zones</h3>
+    <p>
+      Every route is checked against the latest map before the rover drives it,
+      so a plan worked out before a new hazard appeared is thrown away rather
+      than followed. While driving it refuses any move that takes its centre
+      into a keep-out ring or puts a wheel on no-go ground it knows about. When
+      that happens it follows the grid route closely for a few metres instead of
+      cutting corners. If it finds itself inside a keep-out ring, because a
+      hazard was only just seen, it picks its way out along the direction that
+      gets clear fastest.
+    </p>
+
+    <h3>When things go wrong</h3>
+    <p>
+      The body also checks its footprint against the real ground before every
+      move, which catches what the cameras got wrong. If it touches a rock, the
+      tilt gets too steep, or it stops making progress, it marks the spot as
+      no-go, reverses along its own tracks (the one path it knows is clear), and
+      replans. After four failed recoveries in a row, or if no route exists
+      through what it knows, it stops and says it is stuck. Some places are
+      simply stuck.
+    </p>
+
+    <h3>What's simplified</h3>
+    <ul>
+      <li>
+        Stereo depth is simulated by ray casting with range-dependent noise, not
+        by matching real images, and the rover always knows exactly where it is.
+        A real rover would also estimate its own position from wheel odometry,
+        the IMU and visual odometry, and that estimate would drift.
+      </li>
+      <li>
+        Every replan searches from scratch. That is fine at this size; an
+        incremental planner like D* Lite would reuse earlier work on larger
+        maps.
+      </li>
+      <li>
+        The suspension is animated to follow the ground, not simulated as a
+        mechanism.
+      </li>
+    </ul>
+    <p>
+      The terrain is a generated lunar surface: rolling regolith and a power-law
+      crater field, lit by a low sun as near the poles. Lighting and shadows for
+      the ground are computed once in a Web Worker along with the terrain, so
+      the page only draws; the rover is the one thing with a live shadow. It is
+      a toy built from textbook methods and a generic design, and none of it
+      downloads until you reach for the Run button or scroll to the model.
+    </p>
+  </article>
+</PageLayout>

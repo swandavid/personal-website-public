@@ -1,0 +1,539 @@
+---
+/**
+ * Interactive lunar rover demo. The page ships only this markup and a tiny
+ * launcher. When the demo comes near the viewport it loads three.js, builds
+ * a world in a worker and draws one live still of it, shown dimmed as if
+ * paused behind the Run button. Until then the page shows a capture of that
+ * same still (scripts/rover-still.mjs), so the swap to the live canvas
+ * doesn't show. Run sets the rover off.
+ */
+import { getImage } from "astro:assets";
+import { Play } from "lucide-react";
+import stillSquare from "@/assets/rover-still-square.jpg";
+import stillWide from "@/assets/rover-still-wide.jpg";
+
+// The stage is square on phones and 16:10 from `sm` up, so each gets the
+// still captured at its own aspect ratio.
+const [square, wide] = await Promise.all([
+  getImage({ src: stillSquare, widths: [480, 732], format: "webp" }),
+  getImage({ src: stillWide, widths: [960, 1436], format: "webp" }),
+]);
+
+const stats = [
+  { key: "remaining", label: "To goal", unit: "m" },
+  { key: "driven", label: "Driven", unit: "m" },
+  { key: "replans", label: "Reroutes" },
+  { key: "recoveries", label: "Recoveries" },
+  { key: "plan", label: "Plan time", unit: "ms" },
+  { key: "points", label: "Stereo points" },
+];
+---
+
+<div data-rover class="rover">
+  <div class="stage relative aspect-square overflow-hidden rounded-2xl border border-edge sm:aspect-[16/10]">
+    <canvas
+      data-rover-canvas
+      class="absolute inset-0 size-full"
+      role="img"
+      aria-label="3D view of the rover and the terrain it is crossing"
+    ></canvas>
+
+    <div data-rover-poster class="poster absolute inset-0">
+      <picture>
+        <source
+          media="(min-width: 40rem)"
+          srcset={wide.srcSet.attribute}
+          sizes="(min-width: 64rem) 60rem, 100vw"
+        />
+        <img
+          src={square.src}
+          srcset={square.srcSet.attribute}
+          sizes="100vw"
+          alt=""
+          class="size-full object-cover"
+          fetchpriority="high"
+          decoding="async"
+        />
+      </picture>
+      <div class="launcher absolute inset-0 grid">
+        <div class="flex flex-col items-center gap-3 px-6 text-center">
+          <button type="button" data-rover-launch class="launch">
+            <Play className="size-4" aria-hidden="true" />
+            <span data-launch-label>Run simulation</span>
+          </button>
+          <p data-rover-note class="label hidden text-ink">
+            This demo needs WebGL, which your browser has turned off.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <div class="pointer-events-none absolute top-3 left-3 flex flex-col items-start gap-2">
+      <p class="hud flex items-center gap-2">
+        <span class="dot" aria-hidden="true"></span>
+        <span data-stat="status" data-tone="ok">
+          Ready
+        </span>
+      </p>
+      <p
+        class="hud imu flex items-center gap-2"
+        role="group"
+        aria-label="IMU attitude"
+      >
+        <svg viewBox="0 0 24 24" class="size-4" aria-hidden="true">
+          <defs>
+            <clipPath id="imu-clip">
+              <circle cx="12" cy="12" r="10"></circle>
+            </clipPath>
+          </defs>
+          <g clip-path="url(#imu-clip)">
+            <g data-horizon>
+              <rect
+                x="-10"
+                y="-10"
+                width="44"
+                height="22"
+                fill="rgb(127 230 255 / 0.35)"
+              ></rect>
+              <rect
+                x="-10"
+                y="12"
+                width="44"
+                height="22"
+                fill="rgb(255 210 122 / 0.35)"
+              ></rect>
+              <line
+                x1="-10"
+                y1="12"
+                x2="34"
+                y2="12"
+                stroke="currentColor"
+                stroke-width="1.2"
+              ></line>
+            </g>
+          </g>
+          <circle
+            cx="12"
+            cy="12"
+            r="10"
+            fill="none"
+            stroke="currentColor"
+            stroke-opacity="0.5"
+          ></circle>
+          <path
+            d="M7 12h3l2 2 2-2h3"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.4"
+          ></path>
+        </svg>
+        <span class="text-white/60">IMU</span>
+        <span>
+          R <span data-stat="roll">+0.0°</span>
+        </span>
+        <span>
+          P <span data-stat="pitch">+0.0°</span>
+        </span>
+      </p>
+    </div>
+
+    <p data-announce class="sr-only" aria-live="polite"></p>
+
+    <div class="hud panel absolute top-3 right-3 flex w-24 flex-col gap-2 sm:w-36">
+      <canvas
+        data-minimap
+        class="minimap aspect-square w-full"
+        role="img"
+        aria-label="Map the rover has built so far. Click to send it somewhere."
+      ></canvas>
+      <div data-legend class="legend">
+        <div data-legend-bar class="h-1.5 rounded-full"></div>
+        <div class="mt-1 flex justify-between">
+          <span>Easy</span>
+          <span>Hard</span>
+        </div>
+        <div class="mt-1.5 flex items-center gap-1.5">
+          <span class="nogo-swatch" aria-hidden="true"></span>
+          <span>No-go</span>
+        </div>
+      </div>
+    </div>
+
+    <p
+      class="hud hint pointer-events-none absolute bottom-4 left-1/2 flex -translate-x-1/2 items-center gap-2 whitespace-nowrap"
+      data-hint
+    >
+      <svg viewBox="0 0 16 16" class="size-3.5" aria-hidden="true">
+        <circle
+          cx="8"
+          cy="8"
+          r="5.5"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.5"
+        ></circle>
+        <circle cx="8" cy="8" r="1.6" fill="currentColor"></circle>
+      </svg>
+      <span data-hint-text>
+        <span data-pointer-fine>Click</span>
+        <span data-pointer-coarse>Tap</span> anywhere to send the rover there
+      </span>
+      <span data-hint-nogo hidden>
+        No-go zone: it will stop at the nearest safe spot
+      </span>
+    </p>
+  </div>
+
+  <div class="controls mt-4 flex flex-wrap items-center justify-end gap-3">
+    <div class="flex flex-wrap items-center gap-2">
+      <button type="button" class="chip" data-toggle-follow aria-pressed="true">
+        Follow
+      </button>
+      <button
+        type="button"
+        class="chip"
+        data-toggle-sensors
+        aria-pressed="true"
+      >
+        Sensors
+      </button>
+      <button type="button" class="chip" data-toggle-cost aria-pressed="true">
+        Heatmap
+      </button>
+      <button type="button" class="chip" data-new-terrain>
+        New terrain
+        <span class="ml-1 text-ink-faint/70" aria-hidden="true">
+          #<span data-stat="seed">–</span>
+        </span>
+      </button>
+    </div>
+  </div>
+
+  <dl class="mt-5 grid grid-cols-3 gap-x-4 gap-y-4 sm:grid-cols-6">
+    {stats.map((s) => (
+      <div>
+        <dt class="label">{s.label}</dt>
+        <dd class="mt-1 font-mono text-lg font-semibold tracking-tight text-ink tabular-nums">
+          <span data-stat={s.key}>–</span>
+          {s.unit && (
+            <span class="ml-1 text-xs font-normal text-ink-faint">
+              {s.unit}
+            </span>
+          )}
+        </dd>
+      </div>
+    ))}
+  </dl>
+</div>
+
+<style>
+  /* Space is black whatever the page theme, so the viewport and its HUD
+     use fixed dark styling. */
+  .stage {
+    background: #030405;
+  }
+  canvas {
+    cursor: crosshair;
+    outline: none;
+    transition: filter 500ms var(--ease-out-soft);
+  }
+  .poster {
+    z-index: 2;
+    transition:
+      opacity 500ms var(--ease-out-soft),
+      visibility 0s linear 500ms;
+  }
+  /* The captured still and the live one wear the same dimming, so the
+     swap between them doesn't show. */
+  .poster img,
+  .rover:not([data-live]) canvas {
+    filter: saturate(0.4) brightness(0.62);
+  }
+  .poster img {
+    transition: opacity 300ms var(--ease-out-soft);
+  }
+  [data-paused] .poster img {
+    opacity: 0;
+  }
+  /* Keep the button off the rover, which sits mid-frame in the still. */
+  .launcher {
+    place-items: end center;
+    padding-bottom: 12%;
+  }
+  [data-live] .poster {
+    opacity: 0;
+    visibility: hidden;
+  }
+  .launch {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    border-radius: 9999px;
+    padding: 0.7rem 1.3rem;
+    background: rgb(236 238 240);
+    color: #0b0d10;
+    font-weight: 600;
+    font-size: 0.95rem;
+    box-shadow: 0 10px 30px -10px
+      color-mix(in oklch, var(--color-ink) 45%, transparent);
+    transition:
+      translate 250ms var(--ease-out-soft),
+      box-shadow 250ms var(--ease-out-soft);
+  }
+  .launch:hover {
+    translate: 0 -1px;
+    box-shadow: 0 14px 34px -10px
+      color-mix(in oklch, var(--color-ink) 55%, transparent);
+  }
+  .launch:disabled {
+    opacity: 0.7;
+    cursor: progress;
+  }
+
+  .hud {
+    z-index: 1;
+    border-radius: 9999px;
+    padding: 0.3rem 0.7rem;
+    background: rgb(8 10 12 / 0.72);
+    border: 1px solid rgb(255 255 255 / 0.08);
+    backdrop-filter: blur(8px);
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: rgb(236 238 240);
+    opacity: 0;
+    transition: opacity 400ms var(--ease-out-soft);
+  }
+  .hint {
+    transition:
+      opacity 500ms var(--ease-out-soft),
+      translate 500ms var(--ease-out-soft),
+      color 200ms var(--ease-out-soft);
+  }
+  .hint[data-nogo] {
+    color: oklch(80% 0.13 60);
+  }
+  [data-live][data-goal-set] .hint:not([data-nogo]) {
+    opacity: 0;
+    translate: -50% 0.5rem;
+  }
+  [data-pointer-coarse] {
+    display: none;
+  }
+  @media (hover: none) {
+    [data-pointer-coarse] {
+      display: inline;
+    }
+    [data-pointer-fine] {
+      display: none;
+    }
+  }
+  .panel {
+    border-radius: 0.6rem;
+    padding: 0.35rem;
+  }
+  .minimap {
+    display: block;
+    border-radius: 0.35rem;
+    cursor: pointer;
+  }
+  .legend {
+    padding: 0 0.1rem 0.1rem;
+    font-size: 0.58rem;
+    letter-spacing: 0.08em;
+    color: rgb(236 238 240 / 0.7);
+  }
+  .nogo-swatch {
+    width: 1.1rem;
+    height: 0.45rem;
+    border-radius: 2px;
+    background: repeating-linear-gradient(
+      -45deg,
+      rgb(240 214 110) 0 3px,
+      rgb(58 8 14) 3px 6px
+    );
+  }
+  .imu {
+    font-size: 0.62rem;
+    gap: 0.45rem;
+  }
+  .imu [data-stat] {
+    display: inline-block;
+    min-width: 4.2ch;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+  @media (max-width: 30rem) {
+    .imu > span:first-of-type {
+      display: none;
+    }
+  }
+  [data-live] .hud {
+    opacity: 1;
+  }
+  .dot {
+    width: 0.45rem;
+    height: 0.45rem;
+    border-radius: 9999px;
+    background: var(--color-visited);
+  }
+  .hud:has([data-tone="busy"]) .dot {
+    animation: pulse 900ms ease-in-out infinite alternate;
+  }
+  .hud:has([data-tone="warn"]) .dot {
+    background: oklch(66% 0.19 32);
+  }
+  @keyframes pulse {
+    to {
+      opacity: 0.3;
+    }
+  }
+
+  .controls {
+    transition: opacity 300ms var(--ease-out-soft);
+  }
+  .rover:not([data-live]) .controls,
+  .rover:not([data-live]) dl {
+    opacity: 0.45;
+    pointer-events: none;
+  }
+
+  .chip {
+    border-radius: 9999px;
+    border: 1px solid var(--color-edge);
+    padding: 0.3rem 0.85rem;
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--color-ink-faint);
+    transition:
+      color 300ms var(--ease-out-soft),
+      border-color 300ms var(--ease-out-soft),
+      background-color 300ms var(--ease-out-soft);
+  }
+  .chip:hover {
+    color: var(--color-ink);
+    border-color: var(--color-ink-faint);
+  }
+  .chip[aria-pressed="true"] {
+    color: var(--color-accent);
+    border-color: color-mix(in oklch, var(--color-accent) 50%, transparent);
+    background: color-mix(in oklch, var(--color-accent) 10%, transparent);
+  }
+</style>
+
+<script>
+  type App = typeof import("./app");
+  let loader: Promise<App> | null = null;
+  /** Fetch the demo and start building the first world in the background. */
+  const load = () =>
+    (loader ??= import("./app").then((app) => {
+      app.prepare();
+      return app;
+    }));
+
+  const hasWebGL = () => {
+    try {
+      return !!document.createElement("canvas").getContext("webgl2");
+    } catch {
+      return false;
+    }
+  };
+
+  function setup(root: HTMLElement) {
+    const launch = root.querySelector<HTMLButtonElement>(
+      "[data-rover-launch]",
+    )!;
+    const label = root.querySelector<HTMLElement>("[data-launch-label]")!;
+    const note = root.querySelector<HTMLElement>("[data-rover-note]")!;
+
+    if (!hasWebGL()) {
+      launch.hidden = true;
+      note.classList.remove("hidden");
+      return;
+    }
+
+    const stages = {
+      engine: "Loading engine",
+      terrain: "Generating terrain",
+      scene: "Preparing scene",
+    };
+    let wantPlay = false;
+    let showStages = false;
+    // Navigating away while the demo loads must still free it once it lands.
+    let aborted = false;
+    let teardown: (() => void) | null = null;
+    let mounted: Promise<{ teardown(): void; play(): void }> | null = null;
+    /** Mount the demo paused; its still replaces the screenshot. */
+    const mount = () =>
+      (mounted ??= load()
+        .then((app) =>
+          app.mountRover(
+            root,
+            (s) => {
+              if (showStages) label.textContent = stages[s];
+            },
+            true,
+          ),
+        )
+        .then((m) => {
+          if (aborted) m.teardown();
+          else teardown = m.teardown;
+          if (!wantPlay) root.dataset.paused = "";
+          return m;
+        }));
+
+    // Load as soon as the demo is near the viewport.
+    const io = new IntersectionObserver(
+      ([entry]) => {
+        if (!entry?.isIntersecting) return;
+        io.disconnect();
+        void mount().catch(() => (mounted = null));
+      },
+      { rootMargin: "200px" },
+    );
+    io.observe(root);
+
+    document.addEventListener(
+      "astro:before-swap",
+      () => {
+        aborted = true;
+        io.disconnect();
+        teardown?.();
+      },
+      { once: true },
+    );
+
+    launch.addEventListener("click", async () => {
+      wantPlay = true;
+      launch.disabled = true;
+      showStages = true;
+      label.textContent = stages.engine;
+      try {
+        const m = await mount();
+        if (aborted) return;
+        delete root.dataset.paused;
+        root.dataset.live = "";
+        m.play();
+      } catch (err) {
+        console.error(err);
+        mounted = null;
+        wantPlay = false;
+        launch.disabled = false;
+        label.textContent = "Try again";
+      }
+    });
+  }
+
+  function init() {
+    for (const root of document.querySelectorAll<HTMLElement>("[data-rover]")) {
+      if (root.dataset.ready !== undefined) continue;
+      root.dataset.ready = "";
+      setup(root);
+    }
+  }
+  init();
+  document.addEventListener("astro:page-load", init);
+</script>

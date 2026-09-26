@@ -1,0 +1,283 @@
+---
+/**
+ * Compact San Francisco Marathon course map, projected at build time.
+ *
+ * The whole route is always drawn. A runner dot rides along it in step with
+ * page scroll (forward on the way down, backward on the way up), the part of
+ * the course behind it brightens, and a readout shows the current mile.
+ */
+import { geoMercator, geoPath } from "d3-geo";
+import type {
+  Feature,
+  FeatureCollection,
+  LineString,
+  MultiPolygon,
+  Polygon,
+} from "geojson";
+import courseData from "@/data/sf-marathon-course.json";
+import landData from "@/data/bay-area-land.json";
+import { pointsAlong, rewind } from "@/lib/geo";
+
+const course = courseData as unknown as Feature<LineString>;
+const land = (
+  landData as unknown as FeatureCollection<Polygon | MultiPolygon>
+).features.map(rewind);
+
+const W = 400;
+const H = 380;
+const PAD = 22;
+
+const projection = geoMercator()
+  .fitExtent(
+    [
+      [PAD, PAD],
+      [W - PAD, H - PAD],
+    ],
+    course,
+  )
+  .clipExtent([
+    [0, 0],
+    [W, H],
+  ]);
+const path = geoPath(projection).digits(1);
+const routeD = path(course) ?? "";
+
+const project = (lon: number, lat: number) => {
+  const [x, y] = projection([lon, lat]) ?? [0, 0];
+  return { x: +x.toFixed(1), y: +y.toFixed(1) };
+};
+
+const coords = course.geometry.coordinates;
+const start = project(coords[0]![0]!, coords[0]![1]!);
+// The route's projected vertices, flattened, for drawing the part run so far.
+const points = coords.flatMap(([lon, lat]) => {
+  const p = project(lon!, lat!);
+  return [p.x, p.y];
+});
+
+const TOTAL_MI = 26.2;
+const miles = pointsAlong(coords, TOTAL_MI, [5, 10, 15, 20, 25]).map((m) => ({
+  fraction: m.at / TOTAL_MI,
+  ...project(m.position[0]!, m.position[1]!),
+}));
+---
+
+<figure class="course" data-course data-total={TOTAL_MI}>
+  <svg
+    viewBox={`0 0 ${W} ${H}`}
+    role="img"
+    aria-label="Map of the San Francisco Marathon course: a 26.2 mile loop from the Embarcadero across the Golden Gate Bridge and back, through the Presidio, Golden Gate Park, the Haight, the Mission and Dogpatch."
+  >
+    <rect width={W} height={H} class="water" />
+    {land.map((f) => (
+      <path d={path(f) ?? ""} class="land" />
+    ))}
+
+    <path d={routeD} class="route-base" />
+    <path
+      d={`M${start.x},${start.y}`}
+      class="route-done"
+      data-route
+      data-points={JSON.stringify(points)}
+    />
+
+    {miles.map((m) => (
+      <circle cx={m.x} cy={m.y} r="4" class="mile" data-mile={m.fraction} />
+    ))}
+
+    <circle cx={start.x} cy={start.y} r="10" class="endpoint-halo" />
+    <circle cx={start.x} cy={start.y} r="4.5" class="endpoint" />
+
+    <circle r="6.5" class="runner" data-runner cx={start.x} cy={start.y} />
+  </svg>
+  <figcaption class="label mt-2 text-right tabular-nums" aria-hidden="true">
+    Mile
+    <span
+      class="ml-1.5 inline-block min-w-[4ch] text-left text-ink"
+      data-mile-readout
+    >
+      0.0
+    </span>
+  </figcaption>
+</figure>
+
+<style>
+  .course svg {
+    display: block;
+    width: 100%;
+    height: auto;
+    border-radius: 0.75rem;
+    overflow: hidden;
+    stroke-linejoin: round;
+    stroke-linecap: round;
+  }
+  .water {
+    fill: var(--color-ocean);
+  }
+  .land {
+    fill: var(--color-land);
+    stroke: var(--color-edge);
+    stroke-width: 0.75px;
+  }
+  .route-base,
+  .route-done {
+    fill: none;
+  }
+  .route-base {
+    stroke: var(--color-visited);
+    stroke-width: 3px;
+    opacity: 0.35;
+  }
+  .route-done {
+    stroke: var(--color-visited);
+    stroke-width: 3.5px;
+    filter: drop-shadow(
+      0 0 4px color-mix(in oklch, var(--color-visited) 60%, transparent)
+    );
+  }
+  .mile {
+    fill: var(--color-canvas);
+    stroke: var(--color-visited);
+    stroke-width: 1.5px;
+    opacity: 0.55;
+    transition:
+      fill 250ms ease-out,
+      opacity 250ms ease-out;
+  }
+  .mile[data-passed] {
+    fill: var(--color-visited);
+    opacity: 1;
+  }
+  .endpoint {
+    fill: var(--color-ink);
+    stroke: var(--color-canvas);
+    stroke-width: 2px;
+  }
+  .endpoint-halo {
+    fill: var(--color-ink);
+    opacity: 0.15;
+  }
+  .runner {
+    fill: var(--color-visited);
+    stroke: var(--color-canvas);
+    stroke-width: 2.5px;
+  }
+</style>
+
+<script>
+  /**
+   * Scroll progress for an element, as a fraction of a scroll window: the
+   * dot starts when the element's centre crosses 90% of the viewport height
+   * and finishes when it reaches 20%. If the element is already on screen at
+   * the top of the page, the window starts at scroll 0 instead, so the dot
+   * always begins at the start line. Symmetric, so scrolling up reverses it.
+   */
+  function progressFor(el: Element) {
+    const r = el.getBoundingClientRect();
+    const vh = window.innerHeight;
+    const centre = r.top + window.scrollY + r.height / 2;
+    const begin = Math.max(0, centre - vh * 0.9);
+    const end = Math.max(begin + vh * 0.4, centre - vh * 0.2);
+    return Math.min(1, Math.max(0, (window.scrollY - begin) / (end - begin)));
+  }
+
+  function setup(root: HTMLElement) {
+    const route = root.querySelector<SVGPathElement>("[data-route]")!;
+    const runner = root.querySelector<SVGCircleElement>("[data-runner]")!;
+    const readout = root.querySelector<HTMLElement>("[data-mile-readout]")!;
+    const milesEls = [
+      ...root.querySelectorAll<SVGCircleElement>("[data-mile]"),
+    ];
+    const total = Number(root.dataset.total);
+    const reduced = matchMedia("(prefers-reduced-motion: reduce)");
+
+    // The part run so far is drawn as its own path up to the runner, not by
+    // dashing the whole route: Safari renders a single route-length dash
+    // wrongly, lighting up pieces of the course all at once.
+    const pts = JSON.parse(route.dataset.points!) as number[];
+    const n = pts.length / 2;
+    const at = new Float64Array(n);
+    for (let i = 1; i < n; i++)
+      at[i] =
+        at[i - 1]! +
+        Math.hypot(
+          pts[2 * i]! - pts[2 * i - 2]!,
+          pts[2 * i + 1]! - pts[2 * i - 1]!,
+        );
+    const length = at[n - 1]!;
+
+    const render = (p: number) => {
+      const d = length * p;
+      let i = 1;
+      while (i < n - 1 && at[i]! < d) i++;
+      const t = Math.min(1, (d - at[i - 1]!) / (at[i]! - at[i - 1]! || 1));
+      const x = pts[2 * i - 2]! + (pts[2 * i]! - pts[2 * i - 2]!) * t;
+      const y = pts[2 * i - 1]! + (pts[2 * i + 1]! - pts[2 * i - 1]!) * t;
+      let path = `M${pts[0]},${pts[1]}`;
+      for (let j = 1; j < i; j++) path += `L${pts[2 * j]},${pts[2 * j + 1]}`;
+      route.setAttribute("d", `${path}L${x.toFixed(1)},${y.toFixed(1)}`);
+      runner.setAttribute("cx", x.toFixed(1));
+      runner.setAttribute("cy", y.toFixed(1));
+      readout.textContent = (p * total).toFixed(1);
+      for (const m of milesEls)
+        m.toggleAttribute("data-passed", p >= Number(m.dataset.mile));
+    };
+
+    // Ease the dot toward the scroll target so wheel steps don't look jumpy.
+    let current = progressFor(root);
+    let target = current;
+    let raf = 0;
+    const tick = () => {
+      current += (target - current) * (reduced.matches ? 1 : 0.18);
+      if (Math.abs(target - current) < 0.0005) current = target;
+      render(current);
+      raf = current === target ? 0 : requestAnimationFrame(tick);
+    };
+    const onScroll = () => {
+      target = progressFor(root);
+      if (!raf) raf = requestAnimationFrame(tick);
+    };
+
+    render(current);
+
+    // Only listen while the map is on screen.
+    let listening = false;
+    const stopListening = () => {
+      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", onScroll);
+    };
+    const observer = new IntersectionObserver(([entry]) => {
+      const visible = entry?.isIntersecting ?? false;
+      if (visible && !listening) {
+        window.addEventListener("scroll", onScroll, { passive: true });
+        window.addEventListener("resize", onScroll, { passive: true });
+        onScroll();
+      } else if (!visible && listening) {
+        stopListening();
+      }
+      listening = visible;
+    });
+    observer.observe(root);
+    // The window outlives the page, so drop its listeners on navigation.
+    document.addEventListener(
+      "astro:before-swap",
+      () => {
+        observer.disconnect();
+        stopListening();
+        cancelAnimationFrame(raf);
+      },
+      { once: true },
+    );
+  }
+
+  function init() {
+    for (const root of document.querySelectorAll<HTMLElement>(
+      "[data-course]",
+    )) {
+      if (root.dataset.ready !== undefined) continue;
+      root.dataset.ready = "";
+      setup(root);
+    }
+  }
+  document.addEventListener("astro:page-load", init);
+</script>

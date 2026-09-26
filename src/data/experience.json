@@ -1,0 +1,41 @@
+[
+  {
+    "id": "lockheed-martin-space",
+    "company": "Lockheed Martin Space",
+    "companyUrl": "https://lockheedmartin.com/en-us/capabilities/space.html",
+    "roles": [
+      {
+        "title": "AI Research Lead Engineer",
+        "period": "2026 — Present"
+      },
+      {
+        "title": "AI Research Engineer",
+        "period": "2024 — 2026"
+      },
+      {
+        "title": "Associate AI Research Engineer",
+        "period": "2022 — 2024"
+      },
+      {
+        "title": "Intern",
+        "period": "2022"
+      }
+    ],
+    "highlights": [
+      "Lead development of C++ and Python flight software that runs fiber-optic loopback bit error rate (BER) tests at 25.875 Gbps and sends telemetry to the ground.",
+      "Own the Yocto Project builds of the custom embedded Linux images that run on flight hardware.",
+      "Drive on-board model serving with Ray Serve, quantizing models and running multiple models concurrently on FPGA boards.",
+      "Architected an autonomous rover navigation stack in ROS2: 3D SLAM with LIO-SAM, a tuned Nav2 for motion control, and open-vocabulary object detection with text-based waypoints."
+    ],
+    "technologies": [
+      "C++",
+      "Python",
+      "Embedded Linux",
+      "Yocto",
+      "ROS2",
+      "Ray Serve",
+      "FPGA",
+      "PyTorch"
+    ]
+  }
+]

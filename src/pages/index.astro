@@ -1,0 +1,28 @@
+---
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import Sidebar from "@/components/Sidebar";
+import About from "@/components/About.astro";
+import Experience from "@/components/Experience.astro";
+import Projects from "@/components/Projects.astro";
+import Education from "@/components/Education.astro";
+import OutsideWork from "@/components/OutsideWork.astro";
+import Footer from "@/components/Footer.astro";
+import { getImage } from "astro:assets";
+import headshot from "@/assets/headshot.jpg";
+
+const photo = await getImage({ src: headshot, width: 192, format: "webp" });
+---
+
+<BaseLayout title="David Swan">
+  <div class="min-h-screen">
+    <Sidebar client:load photo={photo.src} />
+    <main class="px-4 pt-12 md:ml-[33.33vw] md:px-12">
+      <About />
+      <Experience />
+      <Projects />
+      <Education />
+      <OutsideWork />
+      <Footer />
+    </main>
+  </div>
+</BaseLayout>
