@@ -65,7 +65,9 @@ for (const [i, f] of frames.entries()) {
 }
 await writeFile(join(dir, "list.txt"), list.join("\n"));
 
-const crop = `crop=${Math.round(box.width)}:${Math.round(box.height)}:${Math.round(box.x)}:${Math.round(box.y)}`;
+// Inset a few pixels so rounding never pulls the page background into the edge.
+const inset = 2;
+const crop = `crop=${Math.floor(box.width) - 2 * inset}:${Math.floor(box.height) - 2 * inset}:${Math.ceil(box.x) + inset}:${Math.ceil(box.y) + inset}`;
 // Fade the ends so the jump back to the start reads as a cut, not a glitch.
 const fade = `fade=in:st=0:d=0.4,fade=out:st=${seconds - 0.4}:d=0.4`;
 const vf = `${crop},scale=720:-2,fps=30,${fade}`;

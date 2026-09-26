@@ -1,21 +1,13 @@
 ---
 import { ArrowUpRight, FileText, Mail } from "lucide-react";
+import SectionHeading from "./SectionHeading.astro";
 import ViewCounter from "./ViewCounter.astro";
 import { EMAIL, GITHUB_URL, LINKEDIN_URL } from "@/data/contact";
 ---
 
-<section
-  id="contact"
-  class="mt-16 rounded-2xl border border-edge bg-surface p-4 md:p-6"
->
-  <h2 class="text-xl font-semibold tracking-tight text-ink md:text-2xl">
-    Get in touch
-  </h2>
-  <p class="mt-2 max-w-xl text-sm leading-relaxed text-ink-muted md:text-base">
-    I'm open to software roles in autonomy, robotics and edge inference in the
-    San Francisco Bay Area. The quickest way to reach me is email.
-  </p>
-  <div class="mt-6 flex flex-wrap items-center gap-x-6 gap-y-3">
+<section id="contact" class="mb-16 md:mb-24">
+  <SectionHeading title="Contact" />
+  <div class="card flex flex-wrap items-center gap-x-6 gap-y-3">
     <a
       href={`mailto:${EMAIL}`}
       class="inline-flex items-center gap-2 rounded-full border border-accent/40 bg-accent/10 px-4 py-1.5 text-sm font-medium text-accent transition-colors hover:bg-accent/20"
@@ -43,7 +35,7 @@ import { EMAIL, GITHUB_URL, LINKEDIN_URL } from "@/data/contact";
   </div>
 </section>
 
-<footer class="mt-16 p-4 md:p-6">
+<footer class="p-4 md:p-6">
   <p class="text-sm text-ink-faint">© {new Date().getFullYear()} David Swan</p>
   <ViewCounter />
 </footer>

@@ -150,12 +150,20 @@
   .link-arrow {
     @apply text-ink hover:text-accent inline-flex items-center gap-2 transition-colors;
   }
-  /* On phones a sticky heading that spans the full screen width and fades
-     out below, so content slides under it instead of being cut off at a hard
-     edge. On desktop a plain heading. The padding lines the text up with the
+  /* On phones a sticky heading that spans the full screen width. Once stuck
+     (data-stuck, set by SectionHeading) it gets a backdrop that fades out
+     below, so content slides under it instead of being cut off at a hard
+     edge; before that it is transparent so it doesn't cover the page glow.
+     On desktop a plain heading. The padding lines the text up with the
      cards' text. */
   .section-heading {
-    @apply bg-canvas/90 text-ink sticky top-0 z-20 -mx-4 mb-4 px-8 py-4 text-lg font-semibold tracking-tight backdrop-blur-md md:static md:mx-0 md:mb-2 md:bg-transparent md:px-6 md:py-0 md:text-2xl md:backdrop-blur-none;
+    @apply text-ink sticky top-0 z-20 -mx-4 mb-4 px-8 py-4 text-lg font-semibold tracking-tight md:static md:mx-0 md:mb-2 md:px-6 md:py-0 md:text-2xl;
+  }
+  .section-heading[data-stuck] {
+    @apply bg-canvas/90 backdrop-blur-md md:bg-transparent md:backdrop-blur-none;
+  }
+  .section-heading:not([data-stuck])::after {
+    display: none;
   }
   @media (width >= 48rem) {
     .section-heading::after {
