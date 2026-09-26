@@ -9,7 +9,6 @@ const SECTIONS = [
   { id: "projects", label: "Projects" },
   { id: "education", label: "Education" },
   { id: "outside-work", label: "Outside work" },
-  { id: "contact", label: "Contact" },
 ] as const;
 
 type Theme = "dark" | "light";

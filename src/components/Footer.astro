@@ -1,41 +1,26 @@
 ---
-import { ArrowUpRight, FileText, Mail } from "lucide-react";
-import SectionHeading from "./SectionHeading.astro";
 import ViewCounter from "./ViewCounter.astro";
 import { EMAIL, GITHUB_URL, LINKEDIN_URL } from "@/data/contact";
+
+const links = [
+  { href: `mailto:${EMAIL}`, label: "Email" },
+  { href: "/David_Swan_Resume.pdf", label: "Résumé" },
+  { href: LINKEDIN_URL, label: "LinkedIn" },
+  { href: GITHUB_URL, label: "GitHub" },
+];
 ---
 
-<section id="contact" class="mb-16 md:mb-24">
-  <SectionHeading title="Contact" />
-  <div class="card flex flex-wrap items-center gap-x-6 gap-y-3">
-    <a
-      href={`mailto:${EMAIL}`}
-      class="inline-flex items-center gap-2 rounded-full border border-accent/40 bg-accent/10 px-4 py-1.5 text-sm font-medium text-accent transition-colors hover:bg-accent/20"
-    >
-      <Mail className="size-4" aria-hidden="true" />
-      {EMAIL}
-    </a>
-    <a
-      href="/David_Swan_Resume.pdf"
-      target="_blank"
-      rel="noopener noreferrer"
-      class="link-arrow text-sm"
-    >
-      <FileText className="size-4" aria-hidden="true" />
-      Résumé
-    </a>
-    <a href={LINKEDIN_URL} class="link-arrow text-sm">
-      LinkedIn
-      <ArrowUpRight className="size-4" aria-hidden="true" />
-    </a>
-    <a href={GITHUB_URL} class="link-arrow text-sm">
-      GitHub
-      <ArrowUpRight className="size-4" aria-hidden="true" />
-    </a>
-  </div>
-</section>
-
-<footer class="p-4 md:p-6">
-  <p class="text-sm text-ink-faint">© {new Date().getFullYear()} David Swan</p>
+<footer class="p-4 text-sm text-ink-faint md:p-6">
+  <p class="flex flex-wrap gap-x-2 gap-y-1">
+    {links.map(({ href, label }, i) => (
+      <>
+        {i > 0 && <span aria-hidden="true">·</span>}
+        <a href={href} class="transition-colors hover:text-ink">
+          {label}
+        </a>
+      </>
+    ))}
+  </p>
+  <p class="mt-2">© {new Date().getFullYear()} David Swan</p>
   <ViewCounter />
 </footer>
