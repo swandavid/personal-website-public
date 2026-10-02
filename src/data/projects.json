@@ -19,7 +19,7 @@
   },
   {
     "id": "nexusodds",
-    "name": "Nexus Odds",
+    "name": "NexusOdds",
     "role": "Co-founder",
     "projectUrl": "https://nexusodds.com",
     "description": "A sports betting analytics SaaS with 2,600+ registered users and 1,290+ lifetime paying customers. I designed the original Python data-collection framework and serverless AWS ingestion pipeline; the platform now processes ~32M odds records a day across 33+ sportsbooks and prediction markets.",
